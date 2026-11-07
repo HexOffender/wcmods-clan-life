@@ -528,7 +528,6 @@ namespace clw::life
         const int cap = s.cap;   // a setting's
         s = State{};
         s.cap = cap;
-        if (current()) rethink(*current());
     }
 
     // For tests and the menu: what each cat in the near camp is doing, and how many are in the world.

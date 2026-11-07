@@ -406,6 +406,16 @@ namespace cl
             case Want::ProtectKin:
                 if (!queen && u(rng) < 0.4 * s) return {Doing::WatchingKits, -1, hours(1, 2)};
                 break;
+            case Want::KeepPeace:
+                // the one it likes least among the free cats: sharing tongues smooths things over
+                if (u(rng) < 0.5 * s)
+                {
+                    const Cat* coldest = nullptr;
+                    for (const Cat* o : others.free)
+                        if (o->id != c.id && o->rank != Rank::Kit && (!coldest || liking.of(c, *o) < liking.of(c, *coldest))) coldest = o;
+                    if (coldest) return {Doing::SharingTongues, coldest->id, hours(1, 1.5)};
+                }
+                break;
             default: break;
             }
         }

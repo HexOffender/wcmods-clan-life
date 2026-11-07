@@ -103,6 +103,7 @@ namespace
         {
             if (!wcmods::on_game_thread_now()) return;
             if (now != "on") clw::life::stop();
+            else if (s.world) clw::life::rethink(*s.world);   // (what each wants, again after a stop)
             apply_day(now == "on");
         }
     }
@@ -244,9 +245,9 @@ namespace
         clw::life::tick(*s.world, 0.5);
         if (std::wstring asked = clw::you::tick(*s.world, 0.5); !asked.empty()) banners().push_back(asked);
         wcmods::share("life", clw::life::snapshot(*s.world));
-        // the days and liking kept every few minutes too
+        // the days, liking and memories kept every ten minutes too (and each day, and as you leave the world)
         static int ticks = 0;
-        if (++ticks % 240 == 0) clw::save(*s.world);
+        if (++ticks % 1200 == 0) clw::save(*s.world);
     }
 
     auto page(wcmods::Ui& ui) -> void

@@ -85,6 +85,8 @@ def test_six_moons(agent):
     # what happened is remembered: each apprentice its mentor, among others
     minds = after.get("minds", {})
     for kid in kits:
+        if by_id[kid].get("mentor", -1) < 0 or by_id[kid]["rank"] != "apprentice":
+            continue   # (no mentor was free, or a medicine cat's apprentice whose mentor is its den's)
         mine = minds.get(str(kid), [])
         assert any(m[0] == 0 and m[1] == kid for m in mine), (kid, mine[:3])   # Happened::Apprenticed, by it
     # and the Allegiances page says what cats want

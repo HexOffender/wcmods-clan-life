@@ -369,6 +369,7 @@ namespace clw::you
                 for (const Cat& c : w->cats)
                     if (c.clan == asker->clan) theirs.push_back(c.id);
                 cl::happened(w->minds, cl::Happened::YourMate, your_id, asker->id, w->moons, theirs, w->cats, w->liking);
+                life::rethink(*w);
                 w->news.push_back({std::string(cl::name(w->yours)), cl::full_name(t, *asker) + " and " + wcmods::utf8(your_name()) + " have become mates."});
                 clw::save(*w);
                 return;
@@ -377,6 +378,7 @@ namespace clw::you
             {
                 y.declined[asker->id] = w->days;
                 cl::happened(w->minds, cl::Happened::Declined, your_id, asker->id, w->moons, {asker->id}, w->cats, w->liking);
+                life::rethink(*w);
                 y.asked_by = -1;
             }
         }
@@ -414,6 +416,7 @@ namespace clw::you
                 for (const Cat& o2 : w->cats)
                     if (o2.clan == c->clan) theirs.push_back(o2.id);
                 cl::happened(w->minds, cl::Happened::YourMate, your_id, c->id, w->moons, theirs, w->cats, w->liking);
+                life::rethink(*w);
                 w->news.push_back({std::string(cl::name(w->yours)), cl::full_name(t, *c) + " and " + wcmods::utf8(your_name()) + " have become mates."});
                 clw::save(*w);
                 return;

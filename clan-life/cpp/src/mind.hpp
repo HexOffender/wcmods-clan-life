@@ -34,7 +34,6 @@ namespace cl
         Kits,          // `who`'s kits born (`whom` the other parent), or taken in
         YourMate,      // your cat and `whom` became mates
         Declined,      // your cat told `whom` "not now"
-        Talked,        // your cat talked with `whom`
         // with Real-time combat (Part B): `who` did it to `whom`
         Fought,
         Spared,
@@ -49,7 +48,7 @@ namespace cl
 
     struct Memory
     {
-        Happened what = Happened::Talked;
+        Happened what = Happened::Apprenticed;
         int who = -1, whom = -1;   // cats' ids (your_id for your cat)
         int moon = 0;
         // how it changed the cat's feeling for `toward` (who it's about, from where this cat stands)
@@ -121,6 +120,7 @@ namespace cl
         switch (what)
         {
         case Happened::Apprenticed:
+            if (whom < 0) break;                                                // (no mentor free)
             if (me.id == who) m.toward = whom, m.respect = 15, m.liking = 5;   // its new mentor
             else if (me.id == whom) m.toward = who, m.liking = 8;               // its new apprentice
             break;
@@ -154,9 +154,6 @@ namespace cl
         case Happened::Elder: break;
         case Happened::Declined:
             if (me.id == whom) m.toward = your_id, m.liking = -6, m.grudge = 4;
-            break;
-        case Happened::Talked:
-            if (me.id == whom) m.toward = your_id, m.liking = 1;
             break;
         case Happened::Fought:
             if (me.id == whom) m.toward = who, m.grudge = 8, m.respect = 4;

@@ -81,7 +81,7 @@ static void memories_and_opinions()
     CHECK(cl::opinion(minds, 7, 3, 22).respect < 5);
     CHECK(cl::opinion(minds, 2, 4, 40).grudge > 10);   // a deputy named is big
     // at most 40 memories a cat
-    for (int m = 0; m < 60; ++m) cl::remember(minds, 8, {Happened::Talked, cl::your_id, 8, m, cl::your_id, 1}, 60);
+    for (int m = 0; m < 60; ++m) cl::remember(minds, 8, {Happened::Warrior, m, -1, m, m, 1}, 60);
     CHECK(minds.of[8].size() == 40);
 }
 
@@ -174,6 +174,20 @@ static void wants_lean_choices_and_orders()
     int watching = 0;
     for (int i = 0; i < 300; ++i) watching += cl::choose(cats[2], calm, cl::DayPart::Morning, others, liking, rng, kin).doing == cl::Doing::WatchingKits;
     CHECK(watching > 60);
+    // a peacekeeper seeks out the one it likes least
+    liking.add(cats[7], cats[1], -30);   // the elder and the ambitious warrior
+    std::vector<cl::WantOf> peace{{Want::KeepPeace, -1, 1.0}};
+    int smoothing = 0;
+    for (int i = 0; i < 300; ++i)
+    {
+        auto a = cl::choose(cats[7], calm, cl::DayPart::Sunhigh, others, liking, rng, peace);
+        smoothing += a.doing == cl::Doing::SharingTongues && a.with == 2;
+    }
+    CHECK(smoothing > 60);
+    // an apprentice with no mentor free remembers nothing of it
+    cl::Minds none;
+    cl::happened(none, Happened::Apprenticed, 7, -1, 3, ids(cats), cats, liking);
+    CHECK(none.of[7].empty());
     // the keen volunteer for patrols first
     std::vector<const Cat*> ptrs;
     for (const Cat& c : cats) ptrs.push_back(&c);

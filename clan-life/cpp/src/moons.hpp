@@ -145,7 +145,7 @@ namespace cl
                 if (medicine) text += ", the medicine cat's apprentice.";
                 else if (mentor) text += std::format(". {} mentor is {}.", their(k, true), name(*mentor));
                 else text += ".";
-                say(text, Happened::Apprenticed, k.id, k.mentor);
+                say(text, Happened::Apprenticed, k.id, k.mentor);   // (a mentor of -1: none free, nothing felt)
             }
             // apprentices named warriors
             for (int id : of(Rank::Apprentice))

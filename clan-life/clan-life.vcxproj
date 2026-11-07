@@ -119,6 +119,7 @@
     <ClInclude Include="cpp\src\you_game.hpp" />
     <ClInclude Include="cpp\src\you.hpp" />
     <ClInclude Include="cpp\src\moons.hpp" />
+    <ClInclude Include="cpp\src\party.hpp" />
     <ClInclude Include="cpp\src\places_page.hpp" />
     <ClInclude Include="cpp\src\world.hpp" />
   </ItemGroup>

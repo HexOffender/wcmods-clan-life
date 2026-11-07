@@ -26,7 +26,7 @@ namespace clw::fights
     {
         int seen = 0;   // the last event's number handled
         std::mt19937 rng{0x66696768};
-        int fought = 0, spared = 0, killed = 0;
+        int fought = 0, spared = 0, killed = 0, beside = 0;
     };
     inline auto state() -> State&
     {
@@ -74,6 +74,12 @@ namespace clw::fights
             wcmods::share("fights_spared", ++s.spared);
             auto& lives = life::state().cats;   // up again: on with its day
             if (auto it = lives.find(id); it != lives.end()) it->second.until = life::state().now;
+        }
+        else if (what == "fought_beside" || what == "fell_beside")   // your party (Part B2)
+        {
+            const auto h = what == "fought_beside" ? cl::Happened::FoughtBeside : cl::Happened::FellBeside;
+            cl::happened(w.minds, h, cl::your_id, id, w.moons, {id}, w.cats, w.liking);
+            if (what == "fought_beside") wcmods::share("fights_beside", ++s.beside);
         }
         else if (what == "killed")
         {

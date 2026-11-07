@@ -39,6 +39,9 @@ namespace cl
         Spared,
         Killed,
         Rescued,
+        // your party (Part B2): `whom` fought beside `who` (your cat), and was beaten down in that fight
+        FoughtBeside,
+        FellBeside,
     };
     constexpr auto big(Happened h) -> bool
     {
@@ -174,6 +177,13 @@ namespace cl
         case Happened::Rescued:
             if (me.id == whom) m.toward = who, m.liking = 30, m.respect = 20, m.grudge = -30;
             else if (mind_detail::kin(me, whom, cats)) m.toward = who, m.liking = 15, m.respect = 10;
+            break;
+        case Happened::FoughtBeside:
+            if (me.id == whom) m.toward = who, m.liking = 8, m.respect = 6;
+            break;
+        case Happened::FellBeside:
+            // beaten down in your fight: a little wary, an anxious cat more so (a brave one not at all)
+            if (me.id == whom) m.toward = who, m.fear = has(me, "anxious") ? 8 : has(me, "brave") ? 0 : 3, m.liking = -2;
             break;
         }
         return m;

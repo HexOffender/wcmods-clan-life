@@ -137,12 +137,69 @@ static void kits_in_time()
     }
 }
 
+// Your party: who comes along when asked, and who has its reasons not to.
+static void who_comes_along()
+{
+    cl::You y;
+    const Clan yours = Clan::ThunderClan;
+    Cat w = cat(1, Rank::Warrior, false, Gender::Tom);
+    std::vector<Cat> cats{w};
+    auto ask = [&](const Cat& c, Rank you = Rank::Warrior, double grudge = 0, int with = 0) {
+        return cl::will_come(y, c, cats, yours, you, grudge, with, 3);
+    };
+    // a stranger (the starting bond) says no; one that knows you says yes
+    CHECK(!ask(w).yes);
+    y.bond[1] = 40;
+    CHECK(ask(w).yes);
+    // a full party, a grudge
+    CHECK(!ask(w, Rank::Warrior, 0, 3).yes);
+    CHECK(ask(w, Rank::Warrior, 0, 2).yes);
+    CHECK(!ask(w, Rank::Warrior, 30).yes);
+    // another Clan's cat, however fond
+    Cat other = w;
+    other.clan = Clan::WindClan;
+    CHECK(!ask(other).yes);
+    // its rank's reasons
+    for (Rank r : {Rank::Kit, Rank::Elder, Rank::MedicineCat, Rank::MedicineApprentice, Rank::Queen})
+    {
+        Cat c = w;
+        c.rank = r;
+        CHECK(!ask(c).yes);
+        CHECK(!ask(c).says.empty());
+    }
+    Cat app = w;
+    app.rank = Rank::Apprentice;
+    CHECK(ask(app).yes);
+    // a cat with kits to nurse, or expecting
+    Cat mum = cat(2, Rank::Warrior, true, Gender::SheCat);
+    y.bond[2] = 60;
+    CHECK(ask(mum).yes);
+    Cat kit = cat(3, Rank::Kit, false, Gender::Tom);
+    kit.mother = 2;
+    cats.push_back(kit);
+    CHECK(!ask(mum).yes);
+    cats.pop_back();
+    mum.expecting = 1;
+    CHECK(!ask(mum).yes);
+    // the leader follows only its deputy
+    Cat leader = w;
+    leader.rank = Rank::Leader;
+    CHECK(!ask(leader).yes);
+    CHECK(ask(leader, Rank::Deputy).yes);
+    // your mate always comes, whatever the bond
+    Cat mate = cat(4, Rank::Warrior, true, Gender::SheCat);
+    y.mate = 4;
+    CHECK(ask(mate).yes);
+    CHECK(!ask(mate, Rank::Warrior, 0, 3).yes);   // (not past a full party)
+}
+
 int main()
 {
     bonds_grow();
     mates_by_age_and_bond_only();
     who_can_carry_kits();
     kits_in_time();
+    who_comes_along();
     std::printf("%d checks, %d failed\n", checks, failures);
     return failures ? 1 : 0;
 }

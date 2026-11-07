@@ -201,12 +201,30 @@ static void wants_lean_choices_and_orders()
     CHECK(sent_keen == 50);
 }
 
+// Your party (Part B2): a cat that fought beside you likes and respects you more; one beaten down in that fight is a
+// little wary of you (an anxious one more, a brave one not), and only it remembers.
+static void fighting_beside_you()
+{
+    auto cats = clan();
+    cl::Liking liking;
+    cl::Minds minds;
+    const int you = cl::your_id;
+    cl::happened(minds, Happened::FoughtBeside, you, 3, 10, {3}, cats, liking);
+    CHECK(cl::opinion(minds, 3, you, 10).liking > 0 && cl::opinion(minds, 3, you, 10).respect > 0);
+    CHECK(cl::opinion(minds, 2, you, 10).liking == 0);
+    cl::happened(minds, Happened::FellBeside, you, 7, 10, {7}, cats, liking);   // anxious
+    cl::happened(minds, Happened::FellBeside, you, 3, 10, {3}, cats, liking);   // brave
+    CHECK(cl::opinion(minds, 7, you, 10).fear > 5);
+    CHECK(cl::opinion(minds, 3, you, 10).fear == 0);
+}
+
 int main()
 {
     memories_and_opinions();
     a_killing_spreads_by_gossip();
     wants();
     wants_lean_choices_and_orders();
+    fighting_beside_you();
     std::printf("%d checks, %d failed\n", checks, failures);
     return failures ? 1 : 0;
 }

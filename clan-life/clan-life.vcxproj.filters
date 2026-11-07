@@ -28,6 +28,18 @@
     <ClInclude Include="cpp\src\genes.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="cpp\src\camp_life.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cpp\src\camps.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cpp\src\life.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cpp\src\places_page.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="cpp\src\world.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

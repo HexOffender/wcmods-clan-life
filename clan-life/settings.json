@@ -1,4 +1,7 @@
 {
-  "_help": "Clan life's settings. enabled: the Clans (false: none, even while you play a Sandbox mode cat).",
-  "enabled": true
+  "_help": "Clan life's settings. enabled: the Clans (false: none, even while you play a Sandbox mode cat). day_minutes: how many real minutes a day lasts (20 is the game's own). night_sky: the sky follows the clock, dark at night. cats_in_world: at most how many of a camp's cats are in the world at once (5 to 50).",
+  "enabled": true,
+  "day_minutes": 20,
+  "night_sky": true,
+  "cats_in_world": 30
 }

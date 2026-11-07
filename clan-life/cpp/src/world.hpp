@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <filesystem>
 #include <format>
 #include <map>
@@ -18,6 +19,7 @@
 
 #include "clans.hpp"
 #include "describe.hpp"
+#include "life.hpp"
 
 namespace clw
 {
@@ -34,6 +36,8 @@ namespace clw
         std::vector<Cat> cats;
         std::wstring made;          // when, as text
         bool made_now = false;      // made this time (not read back)
+        int days = 0;               // days gone by since they were made (step 3: the clock's days)
+        cl::Liking liking;          // how the cats' liking for each other has moved
     };
 
     inline auto clan_of(std::wstring_view name) -> std::optional<Clan>
@@ -284,6 +288,9 @@ namespace clw
         for (const wcmods::Json& j : rec["cats"].values())
             if (auto c = from_json(t, j)) w.cats.push_back(*c);
         if (w.cats.empty()) return std::nullopt;
+        w.days = static_cast<int>(rec["days"].number(0));
+        for (const wcmods::Json& l : rec["liking"].values())
+            if (l.size() == 3) w.liking.changed[cl::Liking::key(static_cast<int>(l[0].number(0)), static_cast<int>(l[1].number(0)))] = l[2].number(0);
         return w;
     }
 
@@ -301,6 +308,17 @@ namespace clw
         Json cats = Json::array();
         for (const Cat& c : w.cats) cats.push(to_json(t, c));
         rec.set("cats", cats);
+        rec.set("days", Json(w.days));
+        Json liking = Json::array();
+        for (auto& [pair, v] : w.liking.changed)
+        {
+            Json l = Json::array();
+            l.push(Json(pair.first));
+            l.push(Json(pair.second));
+            l.push(Json(std::round(v * 10) / 10));
+            liking.push(l);
+        }
+        rec.set("liking", liking);
         slots.set(std::to_string(w.slot), rec);
         all.set("version", Json(1));
         all.set("slots", slots);

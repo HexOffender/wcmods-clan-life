@@ -7,6 +7,7 @@
 
 #include <WCMods/WCMods.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <format>
@@ -115,6 +116,7 @@ namespace clw
             g.coats.push_back({c.r, c.g, c.b});
             r.coats.push_back(cl::coat_of(c.r, c.g, c.b));
             r.coat_colours.push_back(cl::coat_colour_of(c.r, c.g, c.b));
+            r.coat_light.push_back((std::max({c.r, c.g, c.b}) + std::min({c.r, c.g, c.b})) / 510.0);
         }
         for (const wcmods::SlotColour& c : slots.eyes)
         {

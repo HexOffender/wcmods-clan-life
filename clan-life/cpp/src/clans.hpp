@@ -234,6 +234,7 @@ namespace cl
         std::map<std::string, std::pair<double, double>> sizes;    // by role column: min, max scale
         std::vector<Coat> coats;                                   // each coat slot's family (coat_of its colour)
         std::vector<std::optional<CoatColour>> coat_colours;       // each coat slot's colour as the genes name it
+        std::vector<double> coat_light;                            // and how light it is (0 to 1), for a tabby's stripes
         std::vector<std::optional<EyeTone>> eye_tones;             // each eye slot's tone on the genes' scale
         double odd_eyes = 0.15;                                    // NPC.Heterochromia.Chance
     };
@@ -470,6 +471,26 @@ namespace cl
         {
             return from.empty() ? fallback : from[std::uniform_int_distribution<size_t>(0, from.size() - 1)(rng)];
         }
+        // A tabby's stripes: the darkest slot of its coat's colour darker than its coat, else brown (a ginger or cream) or
+        // black.
+        auto stripes_for(int coat, CoatColour colour) const -> int
+        {
+            auto light = [&](int s) { return s >= 0 && static_cast<size_t>(s) < t.coat_light.size() ? t.coat_light[static_cast<size_t>(s)] : 0.5; };
+            int best = -1;
+            for (int s : slots_of(colour))
+                if (s != coat && light(s) < light(coat) - 0.05 && (best < 0 || light(s) < light(best))) best = s;
+            if (best >= 0) return best;
+            // none darker of its own colour: a ginger or cream's stripes brown, else black (a brown, a grey, a black's)
+            const bool orange = colour == CoatColour::Ginger || colour == CoatColour::Cream;
+            for (CoatColour dark : orange ? std::vector<CoatColour>{CoatColour::Brown, CoatColour::Black} : std::vector<CoatColour>{CoatColour::Black})
+            {
+                for (int s : slots_of(dark))
+                    if (s != coat && (best < 0 || light(s) < light(best))) best = s;
+                if (best >= 0) return best;
+            }
+            return coat;
+        }
+
         // A kit's coat, pattern, markings, fur and eyes from what its genes show, kept as near its parents' as the genes
         // allow (a parent's coat slot when it's the same colour, its pattern when it's a tabby too).
         auto dress(Look& l, const Phenotype& p, const Look* mother, const Look* father, Clan clan) -> void
@@ -495,7 +516,7 @@ namespace cl
                 for (const Look* x : {mother, father})
                     if (x && is_tabby_pattern(x->pattern)) theirs.push_back(x->pattern);
                 l.pattern = !theirs.empty() ? pick(theirs, 13) : tabby_patterns[std::uniform_int_distribution<size_t>(0, tabby_patterns.size() - 1)(rng)];
-                l.pattern_colour = l.coat;   // the stripes in the coat's own colour family, as a tabby's are
+                l.pattern_colour = stripes_for(l.coat, p.coat);
             }
             else l.pattern = 0;
             if (p.white_patches)

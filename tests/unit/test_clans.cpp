@@ -63,8 +63,11 @@ static auto tables() -> cl::Tables
     t.kit_parts[cl::Part::Tail] = {3};
     t.sizes = {{"Kit", {0.1, 0.15}}, {"Apprentice", {0.4, 0.5}}, {"Warrior", {0.7, 0.8}}, {"Leader", {0.9, 1.0}},
                {"Deputy", {0.7, 0.8}}, {"MedicineCat", {0.7, 0.8}}, {"Queen", {0.7, 0.8}}, {"Elder", {0.65, 0.75}}};
-    t.coats = {cl::Coat::Black, cl::Coat::Grey, cl::Coat::Ginger, cl::Coat::White};
-    t.coat_colours = {cl::CoatColour::Black, cl::CoatColour::Grey, cl::CoatColour::Ginger, cl::CoatColour::White};
+    // (a fifth slot, brown, the Clans' weights never pick: kits whose genes are brown can have it, and ginger tabbies'
+    // stripes do)
+    t.coats = {cl::Coat::Black, cl::Coat::Grey, cl::Coat::Ginger, cl::Coat::White, cl::Coat::Brown};
+    t.coat_colours = {cl::CoatColour::Black, cl::CoatColour::Grey, cl::CoatColour::Ginger, cl::CoatColour::White, cl::CoatColour::Brown};
+    t.coat_light = {0.1, 0.5, 0.45, 0.98, 0.25};
     t.eye_tones = {cl::EyeTone{0.1}, cl::EyeTone{0.4}, cl::EyeTone{0.6}, cl::EyeTone{0.9}, cl::EyeTone{0.5, true}, std::nullopt, std::nullopt};
     return t;
 }
@@ -298,12 +301,17 @@ static void looks_follow_the_genes()
                 }
                 ++kits;   // a kit: its coat is its genes' wherever there's a slot of that colour
                 const bool has_slot = shown.coat == cl::CoatColour::Black || shown.coat == cl::CoatColour::Grey
-                                      || shown.coat == cl::CoatColour::Ginger || shown.coat == cl::CoatColour::White;
+                                      || shown.coat == cl::CoatColour::Ginger || shown.coat == cl::CoatColour::White
+                                      || shown.coat == cl::CoatColour::Brown;
                 if (has_slot)
                 {
                     matched += slot && *slot == shown.coat;
                     if (shown.tortoiseshell) CHECK(c.she && (c.look.pattern == cl::tortoiseshell_pattern || c.look.pattern == cl::calico_pattern));
-                    else if (shown.tabby && shown.coat != cl::CoatColour::White) CHECK(cl::is_tabby_pattern(c.look.pattern));
+                    else if (shown.tabby && shown.coat != cl::CoatColour::White)
+                    {
+                        CHECK(cl::is_tabby_pattern(c.look.pattern));
+                        CHECK(c.look.pattern_colour != c.look.coat || c.look.coat == 0);   // stripes darker (black's own: none darker)
+                    }
                     else if (shown.coat != cl::CoatColour::White) CHECK(c.look.pattern == 0);
                 }
                 CHECK((c.look.fur >= cl::long_fur_from) == shown.long_fur);

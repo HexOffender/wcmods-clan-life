@@ -396,7 +396,9 @@ the border; a Gathering from the walk there to the walk home.
 Clanmates with you (step 5) and patrols near a fight join it: they go after the animal you're fighting and hit it
 with the cats' own fight moves, and a patrol that meets an animal fights it. It needs a small addition to Real-time
 combat (allies it knows about), done as its own pull request there. Your party comes first (the owner's, 2026-11-07:
-wcmods' rivals-and-motives plan, Part B2); patrols joining fights come with step 4's patrols.
+wcmods' rivals-and-motives plan, Part B2); patrols joining fights come with step 4's patrols. The warrior code's
+judgements of your cat (that plan's Part E, step E1) came next: an exile's old Clan drives it out of camp through
+Real-time combat's hostile cats.
 
 **Proof:** in game, a friend helping your cat beat a rabbit; a patrol driving an animal off.
 

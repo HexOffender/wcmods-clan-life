@@ -163,7 +163,10 @@ def test_a_party_that_fights_beside_you(agent):
     _until(lambda: life().get("near") == yours and len(life().get("cats", [])) >= 3, 90, f"{yours}'s cats")
     with open(RECORD, encoding="utf-8") as f:
         cats = json.load(f)["slots"][str(int(_get(agent, MOD, "slot")))]["cats"]
-    warriors = [c for c in cats if c["clan"] == yours and c["rank"] == "warrior" and not c.get("from_game")]
+    # (Clan life's own: the game's own cats of your Clan it leaves to the game; warriors first)
+    order = {"warrior": 0, "deputy": 1, "apprentice": 2}
+    warriors = sorted((c for c in cats if c["clan"] == yours and c["rank"] in order and not c.get("from_game")),
+                      key=lambda c: order[c["rank"]])
     elder = next(c for c in cats if c["clan"] == yours and c["rank"] == "elder")
     assert warriors, "no warriors in your Clan"
     friend = warriors[0]

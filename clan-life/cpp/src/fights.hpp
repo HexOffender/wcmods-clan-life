@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "camp_life.hpp"
+#include "code_game.hpp"
 #include "mind.hpp"
 #include "moons.hpp"
 #include "world.hpp"
@@ -67,6 +68,7 @@ namespace clw::fights
         {
             cl::happened(w.minds, cl::Happened::Fought, cl::your_id, id, w.moons, witnesses(w, id, 2500), w.cats, w.liking);
             wcmods::share("fights_fought", ++s.fought);
+            for (auto& line : code::deed(w, cl::Happened::Fought, id)) shown.push_back(std::move(line));
         }
         else if (what == "spared")
         {
@@ -93,6 +95,7 @@ namespace clw::fights
                 heard.told = true;
                 cl::remember(w.minds, c.id, heard, w.moons);
             }
+            for (auto& line : code::deed(w, cl::Happened::Killed, id)) shown.push_back(std::move(line));
             const std::string text = std::format("{} was killed by {}.", name, wcmods::utf8(you::your_name()));
             w.news.push_back({std::string(cl::name(clan)), text});
             shown.push_back(wcmods::wide(text));

@@ -103,6 +103,8 @@ namespace clw::party
         {
             const cl::Opinion o = cl::opinion(w.minds, id, cl::your_id, w.moons);
             a = cl::will_come(w.you, *c, w.cats, w.yours, your_rank, o.grudge, static_cast<int>(s.ids.size()), size());
+            if (w.standing.exiled >= 0 && c->clan == w.yours) a = {false, "Walk with you? You're no Clanmate of mine. Not any more."};
+            else if (w.standing.punished_until > w.days) a = {false, "You've the elders' ticks to see to. Ask me when you're done."};
             if (a.yes)
             {
                 s.ids.push_back(id);

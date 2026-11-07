@@ -28,6 +28,7 @@
 #include "allegiances.hpp"
 #include "camp_life.hpp"
 #include "clans.hpp"
+#include "code_game.hpp"
 #include "describe.hpp"
 #include "fights.hpp"
 #include "moons.hpp"
@@ -106,6 +107,7 @@ namespace
             if (!wcmods::on_game_thread_now()) return;
             if (now != "on")
             {
+                clw::code::clear();
                 clw::party::clear();
                 clw::life::stop();
             }
@@ -118,6 +120,7 @@ namespace
     auto bring_in(int slot, const std::wstring& cat, clw::Clan yours) -> void
     {
         State& s = state();
+        clw::code::clear();
         clw::party::clear();
         clw::life::stop();
         clw::life::current() = nullptr;
@@ -186,16 +189,18 @@ namespace
     }
 
     // The moons' news for your Clan and the camp your cat is in, one banner at a time.
-    auto banners() -> std::vector<std::wstring>&
+    // (its title, its words)
+    auto banners() -> std::vector<std::pair<std::wstring, std::wstring>>&
     {
-        static std::vector<std::wstring> waiting;
+        static std::vector<std::pair<std::wstring, std::wstring>> waiting;
         return waiting;
     }
+    auto banner(const wchar_t* title, std::wstring text) -> void { banners().push_back({title, std::move(text)}); }
     auto show_news() -> void
     {
         auto& waiting = banners();
         if (waiting.empty()) return;
-        if (wcmods::hud_banner(wcmods::Banner::Begin, {.kind = L"Clan life", .title = L"A new moon", .text = waiting.front(), .seconds = 5}))
+        if (wcmods::hud_banner(wcmods::Banner::Begin, {.kind = L"Clan life", .title = waiting.front().first, .text = waiting.front().second, .seconds = 5}))
             waiting.erase(waiting.begin());
     }
 
@@ -221,9 +226,9 @@ namespace
         for (const cl::MoonNews& n : news)
         {
             w.news.push_back({std::string(cl::name(n.clan)), n.text});
-            if (n.clan == w.yours || (near_camp && n.clan == *near_camp)) banners().push_back(wcmods::wide(n.text));
+            if (n.clan == w.yours || (near_camp && n.clan == *near_camp)) banner(L"A new moon", wcmods::wide(n.text));
         }
-        if (!w.you.to_name.empty()) banners().push_back(L"Your kits are waiting for their names: the Clanmates page.");
+        if (!w.you.to_name.empty()) banner(L"A new moon", L"Your kits are waiting for their names: the Clanmates page.");
         if (w.news.size() > 80) w.news.erase(w.news.begin(), w.news.begin() + static_cast<long>(w.news.size() - 80));
         wcmods::log(L"a moon has passed ({}): {} pieces of news", w.moons, news.size());
         wcmods::share("moons", static_cast<double>(w.moons));
@@ -249,10 +254,11 @@ namespace
         if (s.state != "on" || !s.world) return;
         const DaySettings d = day_settings();
         if (const auto& a = applied(); !a || a->minutes != d.minutes || a->night_sky != d.night_sky || a->cats != d.cats) apply_day(true);
-        for (std::wstring& line : clw::fights::tick(*s.world)) banners().push_back(std::move(line));
+        for (std::wstring& line : clw::fights::tick(*s.world)) banner(L"A fight", std::move(line));
         clw::life::tick(*s.world, 0.5);
-        for (std::wstring& line : clw::party::tick(*s.world, clw::you::your_rank())) banners().push_back(std::move(line));
-        if (std::wstring asked = clw::you::tick(*s.world, 0.5); !asked.empty()) banners().push_back(asked);
+        for (std::wstring& line : clw::party::tick(*s.world, clw::you::your_rank())) banner(L"Your party", std::move(line));
+        for (std::wstring& line : clw::code::tick(*s.world, clw::you::your_rank())) banner(L"The warrior code", std::move(line));
+        if (std::wstring asked = clw::you::tick(*s.world, 0.5); !asked.empty()) banner(L"Clanmates", asked);
         wcmods::share("life", clw::life::snapshot(*s.world));
         // the days, liking and memories kept every ten minutes too (and each day, and as you leave the world)
         static int ticks = 0;
@@ -284,6 +290,7 @@ class ClanLife : public wcmods::ModBase
         wcmods::menu_page(L"Clanmates", [](wcmods::Ui& ui) {
             State& s = state();
             clw::you::page(ui, s.state == "on" && s.world ? &*s.world : nullptr);
+            clw::code::page(ui, s.state == "on" && s.world ? &*s.world : nullptr);
         });
         wcmods::on_npc_interact([](wcmods::Npc n) {
             State& s = state();

@@ -22,6 +22,12 @@
     <ClInclude Include="cpp\src\clans.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="cpp\src\code_game.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cpp\src\code.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="cpp\src\describe.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

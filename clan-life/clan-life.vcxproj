@@ -109,6 +109,8 @@
   <ItemGroup>
     <ClInclude Include="cpp\src\allegiances.hpp" />
     <ClInclude Include="cpp\src\clans.hpp" />
+    <ClInclude Include="cpp\src\code_game.hpp" />
+    <ClInclude Include="cpp\src\code.hpp" />
     <ClInclude Include="cpp\src\describe.hpp" />
     <ClInclude Include="cpp\src\genes.hpp" />
     <ClInclude Include="cpp\src\camp_life.hpp" />

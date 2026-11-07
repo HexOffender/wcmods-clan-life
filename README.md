@@ -38,6 +38,20 @@ own tests. There's nothing to install yet. So far:
   you're its deputy) and a cat with a grudge against you say no, and why. They follow your cat anywhere, are put
   beside you again after a fast travel, and with Real-time combat fight beside you. They remember fighting together.
   They go home when you send them, or at nightfall.
+- **The warrior code** (that plan's part E1): what you do in a fight can break the code.
+  - **Severe:** killing a kit, a medicine cat or a Clanmate.
+  - **Serious:** giving the killing blow to another Clan's cat that had yielded, or attacking a kit or a medicine cat.
+  - **Lesser:** attacking a Clanmate.
+  - **At dawn:** the cats who know may tell your leader (a deputy's witnesses are slower to), and the leader judges by
+    your rank:
+    - a warrior is exiled for a severe or serious breach
+    - an apprentice is punished the first time
+    - a deputy loses the deputyship
+    - a leader answers to no one
+  - **Standing:** your standing with each Clan is the game's own Clan bond, and it falls with each breach. The Clans
+    think less of each other when one's cat harms another's.
+  - **Exile:** your old Clanmates drive you out of camp (with Real-time combat they fight you), and nobody walks with
+    you. After three days you can ask the leader to take you back on the Clanmates page.
 
 ## Building it
 
@@ -57,5 +71,5 @@ in `clan-life\`.
   python wcmods.py agent test <this repository>\tests\game --launch
   ```
 
-  `test_fights.py` and `test_party.py` need Real-time combat installed too
+  `test_fights.py`, `test_party.py` and `test_code.py` need Real-time combat installed too
   (`--with <wcmods-realtime-combat>\realtime-combat`).

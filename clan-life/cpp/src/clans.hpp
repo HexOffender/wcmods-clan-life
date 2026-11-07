@@ -14,6 +14,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <optional>
 #include <random>
@@ -240,6 +241,14 @@ namespace cl
     };
 
     // ------------------------------------------------------------------------------------------- a cat
+    // Who a cat is: a tom, a she-cat, or non-binary. Apart from its body (Cat::she: two X, which its genes follow, and
+    // able to carry kits), so a cat can be trans: a trans tom was taken for a she-cat at birth.
+    enum class Gender
+    {
+        Tom,
+        SheCat,
+        NonBinary,
+    };
     constexpr std::array<std::string_view, 14> trait_names{"loyal", "ambitious", "kind", "gruff", "proud", "anxious",
                                                            "playful", "wise", "lazy", "brave", "sharp-tongued", "patient",
                                                            "curious", "stubborn"};
@@ -249,7 +258,8 @@ namespace cl
         Clan clan = Clan::ThunderClan;
         Rank rank = Rank::Warrior;
         int prefix = -1, suffix = -1;   // indexes into Tables
-        bool she = false;
+        bool she = false;            // its body: two X (genes.hpp follow it) and able to carry kits
+        Gender gender = Gender::Tom; // who it is
         int moons = 0;
         Look look;                   // as a grown cat
         double grown = 0.5;          // where in its rank's size range it sits (0 to 1), kept as it grows
@@ -257,7 +267,38 @@ namespace cl
         std::array<int, 2> traits{0, 1};
         bool from_game = false;      // one of the cats the game made for your Clan
         Genome genes;                // step 1b: its looks follow them, and its kits inherit them
+        int expecting = 0;           // a queen: moons before her kits are born (0: none coming)
     };
+    // A tom or a she-cat that isn't what it was taken for at birth.
+    inline auto trans(const Cat& c) -> bool { return (c.gender == Gender::Tom && c.she) || (c.gender == Gender::SheCat && !c.she); }
+    // "tom", "she-cat", "non-binary cat", with "trans " for a trans cat; a kit's "tom-kit", "she-kit", "kit".
+    inline auto gender_words(const Cat& c) -> std::string
+    {
+        const bool kit = c.rank == Rank::Kit;
+        std::string w = c.gender == Gender::Tom ? (kit ? "tom-kit" : "tom") : c.gender == Gender::SheCat ? (kit ? "she-kit" : "she-cat") : (kit ? "non-binary kit" : "non-binary cat");
+        return trans(c) ? "trans " + w : w;
+    }
+    // "his", "her", "their"; capitalised with `big`.
+    inline auto their(const Cat& c, bool big = false) -> std::string
+    {
+        const char* w = c.gender == Gender::Tom ? "his" : c.gender == Gender::SheCat ? "her" : "their";
+        std::string s(w);
+        if (big) s[0] = static_cast<char>(s[0] - 'a' + 'A');
+        return s;
+    }
+    inline auto gender_name(Gender g) -> std::string_view
+    {
+        return g == Gender::Tom ? "tom" : g == Gender::SheCat ? "she-cat" : "non-binary";
+    }
+    inline auto gender_of(std::string_view s) -> std::optional<Gender>
+    {
+        if (s == "tom") return Gender::Tom;
+        if (s == "she-cat") return Gender::SheCat;
+        if (s == "non-binary") return Gender::NonBinary;
+        return std::nullopt;
+    }
+    // Whether two cats could have kits of their own: one able to carry them, the other not.
+    inline auto kits_together(const Cat& a, const Cat& b) -> bool { return a.she != b.she; }
     inline auto full_name(const Tables& t, const Cat& c) -> std::string
     {
         if (c.prefix < 0 || c.suffix < 0) return "";
@@ -309,6 +350,7 @@ namespace cl
                 k.id = next_id++;
                 if (k.moons <= 0 && k.rank != Rank::Kit) k.moons = moons_for(k.rank);
                 k.she = k.rank == Rank::Queen || chance(0.5);   // the game keeps no gender for its cats
+                k.gender = gender_for(k.she, k.rank == Rank::Queen);
                 k.grown = std::uniform_real_distribution<double>(0, 1)(rng);
                 pick_traits(k);
                 k.genes = genes_of_look(c, k.look, k.she);
@@ -365,6 +407,87 @@ namespace cl
                 if (w.rank == Rank::Warrior && w.mate < 0 && chance(0.25))
                     if (Cat* other = pick_mate(out, w)) pair(w, *other);
             assign_mentors(out);
+            return out;
+        }
+
+        // A new name for a cat's new rank: its prefix kept, a suffix the rank's weights give (an apprentice's -paw, a
+        // warrior's own), a name not taken in the forest or banned whole where there's one. Its old name stays taken.
+        auto rename(Cat& c) -> void
+        {
+            const std::string role(table_role(c.rank));
+            std::vector<double> sw;
+            for (const Suffix& s : t.suffixes)
+            {
+                auto w = s.weight.find(role);
+                sw.push_back(w == s.weight.end() ? 0 : w->second);
+            }
+            if (c.prefix < 0) return name_for(c);
+            for (int attempt = 0; attempt < 200; ++attempt)
+            {
+                const int si = weighted(sw);
+                if (si < 0) return;
+                const std::string whole = t.prefixes[static_cast<size_t>(c.prefix)].word + t.suffixes[static_cast<size_t>(si)].word;
+                if ((taken.contains(whole) && si != c.suffix) || t.banned.contains(whole)) continue;
+                c.suffix = si;
+                taken.insert(whole);
+                return;
+            }
+            // every name its rank could have is taken (an apprentice's one -paw): the rank's name all the same, the
+            // same as another cat's somewhere in the forest, rather than a kit's name on an apprentice
+            if (const int si = weighted(sw); si >= 0) c.suffix = si;
+        }
+        // A litter of `n` kits born to these parents (0 moons old, littermates), with genes from both.
+        auto litter(const Cat& mother, const Cat* father, int n) -> std::vector<Cat>
+        {
+            std::vector<Cat> kits;
+            for (int i = 0; i < n; ++i) kits.push_back(child(mother.clan, Rank::Kit, mother, father, 0));
+            return kits;
+        }
+        auto litter_size() -> int { return std::uniform_int_distribution<int>(1, 4)(rng); }
+        // Kits found at the edge of the territory and taken in by two mates (`a` and `b`, as their parents): their genes
+        // the Clan's, a moon or two old.
+        auto foundlings(const Cat& a, const Cat& b, int n) -> std::vector<Cat>
+        {
+            std::vector<Cat> kits;
+            const int moons = std::uniform_int_distribution<int>(0, 2)(rng);
+            for (int i = 0; i < n; ++i)
+            {
+                Cat k = child(a.clan, Rank::Kit, Cat{}, nullptr, moons, false);
+                k.mother = a.id;
+                k.father = b.id;
+                kits.push_back(k);
+            }
+            return kits;
+        }
+        // Who a cat with this body is: most the gender they were taken for at birth, some trans, some non-binary.
+        auto gender_for(bool she, bool queen) -> Gender
+        {
+            const double r = std::uniform_real_distribution<double>(0, 1)(rng);
+            if (queen) return r < 0.05 ? Gender::NonBinary : Gender::SheCat;   // (a queen of the first Clans carried her kits)
+            if (r < 0.05) return Gender::NonBinary;
+            if (r < 0.09) return she ? Gender::Tom : Gender::SheCat;
+            return she ? Gender::SheCat : Gender::Tom;
+        }
+        // Genes that give a look (hidden alleles by how common they are in the Clan): for a cat that comes with a
+        // look of its own, as your cat does.
+        auto genes_for_look(Clan c, const Look& l, bool she) -> Genome { return genes_of_look(c, l, she); }
+        // Names that would fit a cat's look (its coat), its prefix the word: up to `n`, none taken in the forest.
+        auto names_that_fit(const Cat& c, int n) -> std::vector<int>
+        {
+            const Coat coat = coat_family(c.look);
+            std::vector<std::pair<double, int>> scored;
+            for (size_t i = 0; i < t.prefixes.size(); ++i)
+            {
+                if (c.suffix < 0) break;
+                const std::string whole = t.prefixes[i].word + t.suffixes[static_cast<size_t>(c.suffix)].word;
+                if (taken.contains(whole) || t.banned.contains(whole)) continue;
+                auto w = t.prefixes[i].weight.find(c.clan);
+                const double weight = (w == t.prefixes[i].weight.end() ? 0.01 : w->second + 0.01) * fit(t.prefixes[i].word, coat);
+                scored.push_back({weight * std::uniform_real_distribution<double>(0.5, 1.5)(rng), static_cast<int>(i)});
+            }
+            std::sort(scored.begin(), scored.end(), std::greater<>());
+            std::vector<int> out;
+            for (size_t i = 0; i < scored.size() && static_cast<int>(out.size()) < n; ++i) out.push_back(scored[i].second);
             return out;
         }
 
@@ -624,6 +747,7 @@ namespace cl
             c.clan = clan;
             c.rank = r;
             c.she = r == Rank::Queen ? true : chance(0.5);
+            c.gender = gender_for(c.she, r == Rank::Queen);
             c.moons = moons_for(r);
             c.look = random_look(clan);
             // a tortoiseshell or calico coat is a she-cat's (the game keeps them off its own cats; the mod's genes give
@@ -642,6 +766,7 @@ namespace cl
             c.clan = clan;
             c.rank = r;
             c.she = chance(0.5);
+            c.gender = gender_for(c.she, false);
             c.moons = moons;
             Look own = random_look(clan);
             Look l;
@@ -671,7 +796,7 @@ namespace cl
         {
             std::vector<Cat*> could;
             for (Cat& b : all)
-                if (b.id != a.id && b.mate < 0 && b.she != a.she && (b.rank == Rank::Warrior || b.rank == Rank::Deputy)
+                if (b.id != a.id && b.mate < 0 && (a.rank != Rank::Queen || b.she != a.she) && (b.rank == Rank::Warrior || b.rank == Rank::Deputy)
                     && b.mother != a.id && a.mother != b.id && !(a.mother >= 0 && a.mother == b.mother))
                     could.push_back(&b);
             if (could.empty()) return nullptr;

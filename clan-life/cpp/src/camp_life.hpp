@@ -406,6 +406,7 @@ namespace clw::life
             {
                 l.target = place_for(c, l);
                 l.npc = wcmods::spawn_npc(spec_of(c, l.target));
+                l.npc->set_prompt(L"Talk");
             }
             if (!l.npc->asleep()) continue;
             // in where its day has it: at the entrance coming home, else where it does what it's doing
@@ -469,6 +470,19 @@ namespace clw::life
         }
     }
 
+    // Every cat drawn again as it comes back in (a moon changed their ranks, names and sizes; kits were born): their days
+    // go on as they were.
+    inline auto respawn() -> void
+    {
+        for (auto& [_, l] : state().cats)
+            if (l.npc)
+            {
+                l.npc->remove();
+                l.npc.reset();
+                l.there = false;
+            }
+    }
+
     // Every cat out of the world (the mod going off, another slot).
     inline auto stop() -> void
     {
@@ -488,15 +502,28 @@ namespace clw::life
         Json out = Json::object();
         Json doing = Json::object();
         int in_world = 0, out_of_it = 0;
+        Json where = Json::array();   // (the first dozen in the world, for tests: id, name, where)
         for (const Cat& c : w.cats)
         {
             if (!s.camp || c.clan != *s.camp || !lives(c)) continue;
             const CatLife& l = s.cats.at(c.id);
             const std::string what(cl::name(l.act.doing));
             doing.set(what, Json(doing[what].number(0) + 1));
-            if (l.npc && l.npc->actor()) ++in_world;
+            if (l.npc && l.npc->actor())
+            {
+                ++in_world;
+                if (auto at = l.npc->location(); at && where.size() < 12)
+                {
+                    Json one = Json::object();
+                    one.set("id", Json(c.id));
+                    one.set("name", Json(cl::full_name(game().tables, c)));
+                    one.set("at", detail::to_json(*at));
+                    where.push(one);
+                }
+            }
             else ++out_of_it;
         }
+        out.set("cats", where);
         out.set("near", Json(s.camp ? std::string(cl::name(*s.camp)) : std::string()));
         out.set("part", Json(s.part ? static_cast<int>(*s.part) : -1));
         out.set("doing", doing);

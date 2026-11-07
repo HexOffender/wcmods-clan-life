@@ -67,7 +67,8 @@ namespace cl
         return "violet";
     }
 
-    // "dark grey tom with amber eyes"; a kit is a "tom-kit" or "she-kit"; odd eyes are "one amber eye and one blue".
+    // "dark grey tom with amber eyes", "silver non-binary cat", "ginger trans she-cat"; a kit is a "tom-kit", "she-kit"
+    // or "non-binary kit"; odd eyes are "one amber eye and one blue".
     inline auto description(const Cat& c, const std::vector<Colour>& coats, const std::vector<Colour>& eyes) -> std::string
     {
         auto at = [](const std::vector<Colour>& v, int i) -> const Colour* {
@@ -75,8 +76,7 @@ namespace cl
         };
         std::string out;
         if (const Colour* coat = at(coats, c.look.coat)) out = coat_words(*coat) + " ";
-        if (c.rank == Rank::Kit) out += c.she ? "she-kit" : "tom-kit";
-        else out += c.she ? "she-cat" : "tom";
+        out += gender_words(c);
         const Colour* left = at(eyes, c.look.eye_colour);
         const Colour* right = at(eyes, c.look.eye_colour2);
         if (left)

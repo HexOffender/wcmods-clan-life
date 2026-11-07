@@ -1,0 +1,5 @@
+build/
+dist/
+clan-life/dlls/
+*.user
+.vs/

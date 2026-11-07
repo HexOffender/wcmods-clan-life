@@ -114,8 +114,13 @@ namespace clw
         {
             g.coats.push_back({c.r, c.g, c.b});
             r.coats.push_back(cl::coat_of(c.r, c.g, c.b));
+            r.coat_colours.push_back(cl::coat_colour_of(c.r, c.g, c.b));
         }
-        for (const wcmods::SlotColour& c : slots.eyes) g.eyes.push_back({c.r, c.g, c.b});
+        for (const wcmods::SlotColour& c : slots.eyes)
+        {
+            g.eyes.push_back({c.r, c.g, c.b});
+            r.eye_tones.push_back(cl::eye_tone_of(c.r, c.g, c.b));
+        }
         g.ok = !r.prefixes.empty() && !r.suffixes.empty() && !r.coats.empty();
         if (g.ok) kept = std::move(g);
         return kept;
@@ -190,6 +195,23 @@ namespace clw
             {"eye_colour", c.look.eye_colour}, {"eye_colour2", c.look.eye_colour2}};
         for (auto& [k, v] : parts) look.set(k, Json(v));
         j.set("look", look);
+        Json genes = Json::object();
+        auto pair = [](const std::array<bool, 2>& a) {
+            Json x = Json::array();
+            x.push(Json(a[0]));
+            x.push(Json(a[1]));
+            return x;
+        };
+        genes.set("orange", pair(c.genes.orange));
+        genes.set("black", pair(c.genes.black));
+        genes.set("dense", pair(c.genes.dense));
+        genes.set("white", pair(c.genes.white));
+        genes.set("spotting", pair(c.genes.spotting));
+        genes.set("tabby", pair(c.genes.tabby));
+        genes.set("short_fur", pair(c.genes.short_fur));
+        genes.set("eyes", Json(c.genes.eyes));
+        genes.set("size", Json(c.genes.size));
+        j.set("genes", genes);
         return j;
     }
     inline auto from_json(const cl::Tables& t, const wcmods::Json& j) -> std::optional<Cat>
@@ -218,6 +240,22 @@ namespace clw
                   .whiskers = n("whiskers"), .fur = n("fur"), .pattern = n("pattern"), .marking = n("marking"),
                   .coat = n("coat"), .pattern_colour = n("pattern_colour"), .marking_colour = n("marking_colour"),
                   .eye_colour = n("eye_colour"), .eye_colour2 = n("eye_colour2")};
+        const wcmods::Json& g = j["genes"];
+        if (g.is_object())
+        {
+            auto pair = [&](const char* k, std::array<bool, 2>& into) {
+                if (g[k].size() == 2) into = {g[k][0].boolean(into[0]), g[k][1].boolean(into[1])};
+            };
+            pair("orange", c.genes.orange);
+            pair("black", c.genes.black);
+            pair("dense", c.genes.dense);
+            pair("white", c.genes.white);
+            pair("spotting", c.genes.spotting);
+            pair("tabby", c.genes.tabby);
+            pair("short_fur", c.genes.short_fur);
+            c.genes.eyes = g["eyes"].number(0.5);
+            c.genes.size = g["size"].number(0.5);
+        }
         return c;
     }
 

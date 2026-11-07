@@ -64,6 +64,8 @@ static auto tables() -> cl::Tables
     t.sizes = {{"Kit", {0.1, 0.15}}, {"Apprentice", {0.4, 0.5}}, {"Warrior", {0.7, 0.8}}, {"Leader", {0.9, 1.0}},
                {"Deputy", {0.7, 0.8}}, {"MedicineCat", {0.7, 0.8}}, {"Queen", {0.7, 0.8}}, {"Elder", {0.65, 0.75}}};
     t.coats = {cl::Coat::Black, cl::Coat::Grey, cl::Coat::Ginger, cl::Coat::White};
+    t.coat_colours = {cl::CoatColour::Black, cl::CoatColour::Grey, cl::CoatColour::Ginger, cl::CoatColour::White};
+    t.eye_tones = {cl::EyeTone{0.1}, cl::EyeTone{0.4}, cl::EyeTone{0.6}, cl::EyeTone{0.9}, cl::EyeTone{0.5, true}, std::nullopt, std::nullopt};
     return t;
 }
 
@@ -157,7 +159,8 @@ static void families_and_mentors()
                 CHECK(mother && mother->rank == cl::Rank::Queen);
                 if (mother && mother->mate >= 0) CHECK(c.father == mother->mate);
                 const cl::Cat* father = by_id(all, c.father);
-                for (cl::Part p : cl::parts)
+                // the shape after one parent or the other (the coat, pattern, markings, fur and eyes follow the genes)
+                for (cl::Part p : {cl::Part::Body, cl::Part::Face, cl::Part::Ears, cl::Part::Eyes, cl::Part::Tail, cl::Part::Whiskers})
                 {
                     ++parts;
                     const int v = cl::part(c.look, p);
@@ -181,7 +184,7 @@ static void families_and_mentors()
             }
         }
     }
-    CHECK(parts > 0 && parts_inherited * 100 >= parts * 85);   // a kit takes after its parents
+    CHECK(parts > 0 && parts_inherited * 100 >= parts * 85);   // a kit's shape takes after its parents
 }
 
 static void names_fit_coats()
@@ -273,8 +276,47 @@ static void a_kit_is_drawn_as_the_game_draws_kits()
     CHECK(w.body == 4 && w.tail == 1 && w.size > 0.74 && w.size < 0.76);
 }
 
+static void looks_follow_the_genes()
+{
+    // (the fixture's coats: black, grey, ginger, white; no cream or brown slot, so those genes fall back)
+    const cl::Tables t = tables();
+    int kits = 0, matched = 0;
+    for (uint32_t seed = 1; seed <= 25; ++seed)
+    {
+        cl::Maker m(t, seed);
+        for (cl::Clan clan : cl::clans)
+        {
+            const auto all = m.clan(clan);
+            for (const cl::Cat& c : all)
+            {
+                const auto shown = cl::phenotype(c.genes, c.she);
+                const auto slot = t.coat_colours[static_cast<size_t>(c.look.coat)];
+                if (c.mother < 0)   // a first cat: its genes give its coat back
+                {
+                    CHECK(slot && shown.coat == *slot);
+                    continue;
+                }
+                ++kits;   // a kit: its coat is its genes' wherever there's a slot of that colour
+                const bool has_slot = shown.coat == cl::CoatColour::Black || shown.coat == cl::CoatColour::Grey
+                                      || shown.coat == cl::CoatColour::Ginger || shown.coat == cl::CoatColour::White;
+                if (has_slot)
+                {
+                    matched += slot && *slot == shown.coat;
+                    if (shown.tortoiseshell) CHECK(c.she && (c.look.pattern == cl::tortoiseshell_pattern || c.look.pattern == cl::calico_pattern));
+                    else if (shown.tabby && shown.coat != cl::CoatColour::White) CHECK(cl::is_tabby_pattern(c.look.pattern));
+                    else if (shown.coat != cl::CoatColour::White) CHECK(c.look.pattern == 0);
+                }
+                CHECK((c.look.fur >= cl::long_fur_from) == shown.long_fur);
+                CHECK(!shown.tortoiseshell || c.she);   // never a tortoiseshell tom
+            }
+        }
+    }
+    CHECK(kits > 50 && matched > 0);
+}
+
 int main()
 {
+    looks_follow_the_genes();
     coats_and_names_fit();
     a_clan_has_the_books_ranks();
     families_and_mentors();

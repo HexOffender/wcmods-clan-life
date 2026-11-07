@@ -110,6 +110,7 @@
     <ClInclude Include="cpp\src\allegiances.hpp" />
     <ClInclude Include="cpp\src\clans.hpp" />
     <ClInclude Include="cpp\src\describe.hpp" />
+    <ClInclude Include="cpp\src\genes.hpp" />
     <ClInclude Include="cpp\src\world.hpp" />
   </ItemGroup>
   <ItemGroup>

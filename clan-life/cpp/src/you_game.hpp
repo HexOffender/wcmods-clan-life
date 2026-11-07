@@ -18,6 +18,7 @@
 #include "camp_life.hpp"
 #include "clans.hpp"
 #include "life.hpp"
+#include "party.hpp"
 #include "world.hpp"
 #include "you.hpp"
 
@@ -134,6 +135,12 @@ namespace clw::you
                     break;
                 case cl::Happened::Rescued:
                     if (m->whom == c.id) remembered = std::format(L"I'd be crow-food if {} hadn't come for me.", nm(m->who));
+                    break;
+                case cl::Happened::FoughtBeside:
+                    if (m->whom == c.id) remembered = L"We fought well together, didn't we? I'd have your back again any day.";
+                    break;
+                case cl::Happened::FellBeside:
+                    if (m->whom == c.id) remembered = L"I'm still sore from that fight. Next time, I'll keep my feet.";
                     break;
                 default: break;
                 }
@@ -301,6 +308,10 @@ namespace clw::you
         auto name = [&](const Cat& c) { return wcmods::wide(cl::full_name(t, c)); };
         ui.note(L"How your clanmates feel about you. Talking to them (most the first time each day) and spending time near "
                 L"them brings you closer. A clanmate who's grown very close to you can become your mate.");
+        ui.note(std::format(L"Your party: ask up to {} clanmates who know you well to come with you. They follow you anywhere, "
+                            L"fight beside you (with Real-time combat), and go home when you send them or at nightfall.",
+                            party::size()));
+        static std::map<int, std::wstring> answers;   // what each said when last asked
         // your cat
         const std::wstring now = !y.gender ? L"not said yet" : *y.gender == cl::Gender::Tom ? L"a tom" : *y.gender == cl::Gender::SheCat ? L"a she-cat" : L"non-binary";
         const std::wstring g = ui.radio(L"Your cat is", now, {L"a tom", L"a she-cat", L"non-binary"});
@@ -409,6 +420,24 @@ namespace clw::you
             else if (o.respect > 20) feels = L", respects you";
             const std::wstring where = c->clan == w->yours ? L"" : L", " + wcmods::wide(cl::name(c->clan));
             ui.progress(std::format(L"{} ({}{}){}", name(*c), wcmods::wide(cl::name(c->rank)), where, feels), bond / 100.0);
+            if (c->clan == w->yours && c->rank != Rank::Kit)
+            {
+                if (party::with_you(c->id))
+                {
+                    if (ui.button(std::format(L"Send {} home", name(*c))))
+                    {
+                        party::send_home(*w, c->id);
+                        answers.erase(c->id);
+                        return;
+                    }
+                }
+                else if (ui.button(std::format(L"Ask {} to come with you", name(*c))))
+                {
+                    answers[c->id] = wcmods::wide(party::ask(*w, c->id, rank).says);
+                    return;
+                }
+                if (auto a = answers.find(c->id); a != answers.end()) ui.note(std::format(L"\u201c{}\u201d", a->second));
+            }
             if (cl::could_be_mates(y, *c, w->yours, rank) && ui.button(std::format(L"Ask {} to be your mate", name(*c))))
             {
                 cl::become_mates(y, *c);

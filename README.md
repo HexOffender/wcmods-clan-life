@@ -33,6 +33,11 @@ own tests. There's nothing to install yet. So far:
   part B): strike a Clan cat and it fights back as a cat. Beaten, it yields; walk away to spare it, or give the
   killing blow. The cats who saw it remember, the victim's Clan hears of it, and a cat killed is gone from the Clans
   (its place as leader, deputy, medicine cat or mentor filled). What the Clans make of it comes next in that plan.
+- **Your party** (that plan's part B2): on the **Clanmates** page, ask up to three clanmates to come with you (the
+  `party_size` setting). One that knows you well says yes; elders, the medicine cat, a queen with kits, the leader (unless
+  you're its deputy) and a cat with a grudge against you say no, and why. They follow your cat anywhere, are put
+  beside you again after a fast travel, and with Real-time combat fight beside you. They remember fighting together.
+  They go home when you send them, or at nightfall.
 
 ## Building it
 
@@ -52,4 +57,5 @@ in `clan-life\`.
   python wcmods.py agent test <this repository>\tests\game --launch
   ```
 
-  `test_fights.py` needs Real-time combat installed too (`--with <wcmods-realtime-combat>\realtime-combat`).
+  `test_fights.py` and `test_party.py` need Real-time combat installed too
+  (`--with <wcmods-realtime-combat>\realtime-combat`).

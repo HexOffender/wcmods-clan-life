@@ -38,6 +38,7 @@ namespace clw::life
         std::optional<Npc> npc;
         bool in_den = false;              // asleep inside its den (out of the world), not curled up outside it
         bool held = false;                // in a fight with your cat, or down (Real-time combat's: left be)
+        bool along = false;               // with your cat (party.hpp's): out of the camp's day
         bool there = false;               // arrived where it does it
         bool bringing_prey = false;       // a hunter coming home: to the pile first
         Vec3 target{};
@@ -413,18 +414,18 @@ namespace clw::life
         {
             // the camp left: its cats out of the world (kept as handles)
             for (Cat& c : w.cats)
-                if (auto& l = s.cats[c.id]; l.npc && l.npc->actor() && (!now || c.clan != *now)) l.npc->sleep();
+                if (auto& l = s.cats[c.id]; l.npc && l.npc->actor() && !l.along && (!now || c.clan != *now)) l.npc->sleep();
             s.camp = now;
         }
         if (!camp) return;
         int in_world = 0;
         for (Cat& c : w.cats)
-            if (auto& l = s.cats[c.id]; c.clan == *now && l.npc && (l.npc->actor() || l.npc->waking())) ++in_world;
+            if (auto& l = s.cats[c.id]; c.clan == *now && !l.along && l.npc && (l.npc->actor() || l.npc->waking())) ++in_world;
         for (Cat& c : w.cats)
         {
             if (c.clan != *now || !lives(c)) continue;
             CatLife& l = s.cats[c.id];
-            if (!shows(l) || in_world >= s.cap || l.held) continue;
+            if (!shows(l) || in_world >= s.cap || l.held || l.along) continue;
             if (!l.npc)
             {
                 l.target = place_for(c, l);
@@ -503,7 +504,7 @@ namespace clw::life
         {
             if (!lives(c)) continue;
             CatLife& l = s.cats[c.id];
-            if (l.held) continue;
+            if (l.held || l.along) continue;
             // its time up, or the clock set back past when it started
             if (s.now >= l.until || s.now < l.since - 0.1) decide(w, c, l);
         }
@@ -511,7 +512,7 @@ namespace clw::life
         for (Cat& c : w.cats)
         {
             CatLife& l = s.cats[c.id];
-            if (!l.npc || !l.npc->actor() || l.held) continue;
+            if (!l.npc || !l.npc->actor() || l.held || l.along) continue;
             // one fallen through the world (put where there was no ground after all): back to the middle of its camp
             if (const Camp* camp = camp_of(c.clan))
                 if (auto at = l.npc->location(); at && at->z < camp->centre.z - 1500)

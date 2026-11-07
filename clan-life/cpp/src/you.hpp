@@ -42,6 +42,7 @@ namespace cl
         double more_talk = 1;        // each talk after that, the same day
         double near_hour = 0.5;      // each game hour near each other
         double mates_at = 90;        // you can ask
+        double party_at = 40;        // a clanmate comes along with you when asked (your party)
         double asks_at = 95;         // it may ask you
         double kits_chance = 0.2;    // a moon, with a mate (one of you able to carry kits, the other not)
         double take_in_chance = 0.1; // a moon, with a mate (not)
@@ -136,5 +137,34 @@ namespace cl
         }
         y.expecting = r.expecting_moons;
         return YourMoon::YouExpecting;
+    }
+    // Your party (wcmods' rivals-and-motives plan, Part B2): whether `c` comes with your cat when asked, and what it says.
+    // `grudge` is its grudge against your cat (mind.hpp's opinion), `with_you` how many are with you already, `party_size`
+    // how many can be. A grown cat of your Clan comes when its bond with you is high enough and it holds no grudge; your
+    // mate always does. Elders, the medicine cat and its apprentice, a cat with kits to nurse and the leader (unless
+    // you're its deputy) have their reasons not to.
+    struct Along
+    {
+        bool yes = false;
+        std::string says;
+    };
+    inline auto will_come(const You& y, const Cat& c, const std::vector<Cat>& cats, Clan yours, Rank your_rank, double grudge,
+                          int with_you, int party_size, const YouRules& r = {}) -> Along
+    {
+        auto no = [](std::string words) { return Along{false, std::move(words)}; };
+        if (c.clan != yours) return no("Go with you? I'm not of your Clan. Mine would never forgive me.");
+        if (c.rank == Rank::Kit) return no("I'm not allowed out of camp! I'm only a kit.");
+        if (c.rank == Rank::Elder) return no("My hunting days are over, young one. Go on without me.");
+        if (c.rank == Rank::MedicineCat || c.rank == Rank::MedicineApprentice)
+            return no("I can't leave the herbs. Come and find me if you're hurt.");
+        bool kits = c.rank == Rank::Queen || c.expecting > 0;
+        for (const Cat& k : cats) kits = kits || (k.rank == Rank::Kit && k.mother == c.id);
+        if (kits) return no("I won't leave my kits.");
+        if (c.rank == Rank::Leader && your_rank != Rank::Deputy) return no("A leader leads. Ask one of the warriors.");
+        if (grudge > 25) return no("Walk with you? After what you've done?");
+        if (with_you >= party_size) return no("You've cats enough with you already.");
+        if (y.mate == c.id) return {true, "Always. Lead the way."};
+        if (bond_of(y, c.id, r) < r.party_at) return no("I don't know you well enough yet. Another time, maybe.");
+        return {true, "Lead on. I'm right behind you."};
     }
 } // namespace cl

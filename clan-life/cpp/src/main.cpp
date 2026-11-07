@@ -31,6 +31,7 @@
 #include "describe.hpp"
 #include "fights.hpp"
 #include "moons.hpp"
+#include "party.hpp"
 #include "places_page.hpp"
 #include "you_game.hpp"
 #include "world.hpp"
@@ -103,7 +104,11 @@ namespace
         if (was_on != (now == "on"))
         {
             if (!wcmods::on_game_thread_now()) return;
-            if (now != "on") clw::life::stop();
+            if (now != "on")
+            {
+                clw::party::clear();
+                clw::life::stop();
+            }
             else if (s.world) clw::life::rethink(*s.world);   // (what each wants, again after a stop)
             apply_day(now == "on");
         }
@@ -113,6 +118,7 @@ namespace
     auto bring_in(int slot, const std::wstring& cat, clw::Clan yours) -> void
     {
         State& s = state();
+        clw::party::clear();
         clw::life::stop();
         clw::life::current() = nullptr;
         std::optional<clw::World> w = clw::load(slot, cat);
@@ -245,6 +251,7 @@ namespace
         if (const auto& a = applied(); !a || a->minutes != d.minutes || a->night_sky != d.night_sky || a->cats != d.cats) apply_day(true);
         for (std::wstring& line : clw::fights::tick(*s.world)) banners().push_back(std::move(line));
         clw::life::tick(*s.world, 0.5);
+        for (std::wstring& line : clw::party::tick(*s.world, clw::you::your_rank())) banners().push_back(std::move(line));
         if (std::wstring asked = clw::you::tick(*s.world, 0.5); !asked.empty()) banners().push_back(asked);
         wcmods::share("life", clw::life::snapshot(*s.world));
         // the days, liking and memories kept every ten minutes too (and each day, and as you leave the world)

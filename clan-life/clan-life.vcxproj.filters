@@ -52,6 +52,9 @@
     <ClInclude Include="cpp\src\moons.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="cpp\src\party.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="cpp\src\places_page.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

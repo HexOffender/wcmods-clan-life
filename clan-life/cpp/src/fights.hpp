@@ -72,7 +72,8 @@ namespace clw::fights
         {
             cl::happened(w.minds, cl::Happened::Spared, cl::your_id, id, w.moons, witnesses(w, id, 2500), w.cats, w.liking);
             wcmods::share("fights_spared", ++s.spared);
-            life::state().cats[id].until = life::state().now;   // up again: on with its day
+            auto& lives = life::state().cats;   // up again: on with its day
+            if (auto it = lives.find(id); it != lives.end()) it->second.until = life::state().now;
         }
         else if (what == "killed")
         {

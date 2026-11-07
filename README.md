@@ -42,6 +42,8 @@ own tests. There's nothing to install yet. So far:
   - **Severe:** killing a kit, a medicine cat or a Clanmate.
   - **Serious:** giving the killing blow to another Clan's cat that had yielded, or attacking a kit or a medicine cat.
   - **Lesser:** attacking a Clanmate.
+  - An attack counts only when you hit the same cat more than once in a fight: one blow in a crowded fight is taken as
+    an accident and forgiven. Your party's blows aren't yours, and your party never goes after a kit or a medicine cat.
   - **At dawn:** the cats who know may tell your leader (a deputy's witnesses are slower to), and the leader judges by
     your rank:
     - a warrior is exiled for a severe or serious breach

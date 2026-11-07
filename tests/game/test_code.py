@@ -1,6 +1,6 @@
 """The warrior code (wcmods' docs/plans/rivals-and-motives.md, Part E, step E1), with Real-time combat. Your cat, a
 warrior (by the test switch ClanLife.your_rank), beats a clanmate in your Clan's camp and gives it the killing blow:
-two breaches kept (the attack, the killing). At dawn the leader judges: exiled. In camp your old clanmates turn on you
+one blow is forgiven as an accident; the second is a breach, and the killing another. At dawn the leader judges: exiled. In camp your old clanmates turn on you
 (Real-time combat sets them on your cat), and none will walk with you.
 
 Run with wcmods' agent, Clan life, Real-time combat and Sandbox mode installed as a test build, a Sandbox mode cat being
@@ -108,7 +108,22 @@ def test_a_warrior_who_kills_a_clanmate_is_exiled(agent):
     breaches = _get(agent, MOD, "breaches") or 0
     killed = _get(agent, MOD, "fights_killed") or 0
 
-    # beaten until it yields, then the killing blow
+    # one blow: an accident, forgiven
+    fought = _get(agent, MOD, "fights_fought") or 0
+    for _ in range(10):
+        c = _cat(agent, victim["id"])
+        if c:
+            _next_to(agent, c)
+        _action(agent, "light")
+        time.sleep(1.2)
+        if (_get(agent, MOD, "fights_fought") or 0) > fought:
+            break
+    else:
+        raise AssertionError(f"no blow landed on {victim['name']}")
+    time.sleep(1.5)
+    one_blow = (_get(agent, MOD, "breaches") or 0) - breaches
+
+    # beaten until it yields (the second blow a breach), then the killing blow
     yielded = _get(agent, RTC, "yielded") or 0
     for _ in range(60):
         c = _cat(agent, victim["id"])
@@ -120,13 +135,22 @@ def test_a_warrior_who_kills_a_clanmate_is_exiled(agent):
             break
     else:
         raise AssertionError(f"{victim['name']} didn't yield")
-    c = _cat(agent, victim["id"])
-    if c:
+    # the killing blow, by the cat that's down (a blow lands on every cat in front: the one that yielded may be another)
+    for c in [_cat(agent, victim["id"])] + _json(agent, MOD, "life").get("cats", []):
+        if not c:
+            continue
         _next_to(agent, c)
-    _action(agent, "finish")
-    _until(lambda: (_get(agent, MOD, "fights_killed") or 0) > killed, 10, "the killing blow")
+        _action(agent, "finish")
+        try:
+            _until(lambda: (_get(agent, MOD, "fights_killed") or 0) > killed, 4, "the killing blow")
+            break
+        except AssertionError:
+            pass
+    else:
+        raise AssertionError("the killing blow never landed")
     _until(lambda: (_get(agent, MOD, "breaches") or 0) >= breaches + 2, 5, "the attack and the killing kept as breaches")
     assert not _get(agent, MOD, "exiled"), "exiled before the leader has judged"
+    assert one_blow == 0, f"one blow kept as {one_blow} breach(es)"
 
     # dawn: the leader judges
     agent.lua("Game.time.set(5, 30) return true")
@@ -135,8 +159,9 @@ def test_a_warrior_who_kills_a_clanmate_is_exiled(agent):
     with open(RECORD, encoding="utf-8") as f:
         news = json.load(f)["slots"][str(int(_get(agent, MOD, "slot")))]["news"]
     judged = [n[1] for n in news if "exiled" in n[1]]
-    verdicts = [n[1] for n in news if n[1].startswith(("Briar", "Fire", "Tall", "Mouse")) or ': "' in n[1]]
-    for_victim = [v for v in verdicts if victim["name"] in v]
+    killed_name = [n[1] for n in news if " was killed by " in n[1]][-1].split(" was killed by ")[0]
+    verdicts = [n[1] for n in news if ': "' in n[1]]
+    for_victim = [v for v in verdicts if killed_name in v]
     assert len(for_victim) == 1, for_victim   # the killing's judgement covers the attack before it
     shot_judged = agent.shot()
 

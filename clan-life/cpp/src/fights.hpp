@@ -68,6 +68,9 @@ namespace clw::fights
         {
             cl::happened(w.minds, cl::Happened::Fought, cl::your_id, id, w.moons, witnesses(w, id, 2500), w.cats, w.liking);
             wcmods::share("fights_fought", ++s.fought);
+        }
+        else if (what == "struck_again")   // your cat's second blow on it in a fight: no accident (one is forgiven)
+        {
             for (auto& line : code::deed(w, cl::Happened::Fought, id)) shown.push_back(std::move(line));
         }
         else if (what == "spared")

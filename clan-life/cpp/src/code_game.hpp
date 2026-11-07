@@ -1,5 +1,7 @@
 // code_game.hpp: the warrior code in play (wcmods' docs/plans/rivals-and-motives.md, Part E, step E1). Your cat's
-// deeds in a fight (fights.hpp hears them from Real-time combat) are weighed against the code (code.hpp) and kept;
+// deeds in a fight (fights.hpp hears them from Real-time combat) are weighed against the code (code.hpp) and kept: a
+// killing, and a strike once your cat has hit the same cat a second time in a fight (one blow in a crowded fight is
+// taken as an accident and forgiven, the owner's);
 // another Clan's regard for yours falls when its cat is harmed, and your standing with it (the game's own Clan bond).
 // At each dawn the cats of your Clan who know of a breach (who remember it: mind.hpp) may tell the leader, and word of
 // one done to another Clan's cat reaches it from that Clan; then the leader judges, by your rank (rank shields a cat).

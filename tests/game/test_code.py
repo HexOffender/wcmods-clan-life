@@ -135,6 +135,9 @@ def test_a_warrior_who_kills_a_clanmate_is_exiled(agent):
     with open(RECORD, encoding="utf-8") as f:
         news = json.load(f)["slots"][str(int(_get(agent, MOD, "slot")))]["news"]
     judged = [n[1] for n in news if "exiled" in n[1]]
+    verdicts = [n[1] for n in news if n[1].startswith(("Briar", "Fire", "Tall", "Mouse")) or ': "' in n[1]]
+    for_victim = [v for v in verdicts if victim["name"] in v]
+    assert len(for_victim) == 1, for_victim   # the killing's judgement covers the attack before it
     shot_judged = agent.shot()
 
     # in camp, your old clanmates turn on you (at midday, out of their dens)

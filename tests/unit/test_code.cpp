@@ -75,6 +75,7 @@ static void breaches_and_their_weight()
     CHECK(!of(Happened::Fought, Rank::Warrior, mine, std::nullopt));
     CHECK(of(Happened::Fought, Rank::Kit, mine, std::nullopt) == Breach::StruckKit);
     CHECK(!cl::deed_words(Breach::KilledKit, "Mousekit").empty());
+    CHECK(cl::killing(Breach::KilledYielded) && !cl::killing(Breach::StruckKit));
 }
 
 // The same killing judged for a warrior, a deputy, a leader, an apprentice and a medicine cat: rank shields a cat.

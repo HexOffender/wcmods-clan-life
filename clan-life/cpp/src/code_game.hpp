@@ -151,6 +151,15 @@ namespace clw::code
         for (cl::BreachDone& b : w.breaches)
         {
             if (b.judged || b.who != cl::your_id) continue;
+            // an attack on a cat it then killed: the killing's judgement covers it
+            if (!cl::killing(b.what) && std::any_of(w.breaches.begin(), w.breaches.end(), [&](const cl::BreachDone& o) {
+                    return o.who == b.who && o.whom == b.whom && cl::killing(o.what);
+                }))
+            {
+                b.judged = true;
+                changed = true;
+                continue;
+            }
             if (!b.heard)
             {
                 const Cat* victim = by_id(w, b.whom);

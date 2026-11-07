@@ -56,6 +56,10 @@ namespace cl
         }
         return Weight::Lesser;
     }
+    constexpr auto killing(Breach b) -> bool
+    {
+        return b == Breach::KilledKit || b == Breach::KilledMedicineCat || b == Breach::KilledClanmate || b == Breach::KilledYielded;
+    }
     // What was done, after the breaker's name: "killed Mousekit, a kit".
     inline auto deed_words(Breach b, const std::string& victim) -> std::string
     {

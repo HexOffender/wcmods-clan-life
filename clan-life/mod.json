@@ -1,0 +1,16 @@
+{
+  "name": "Clan life",
+  "description": "Every Clan's camp full of cats living by rank, needs and orders, as in the Warriors books, while you play a Sandbox mode cat. In development: the Clans and their Allegiances so far. Needs the Sandbox mode mod (0.7 or later), UE4SS and code mods allowed.",
+  "version": "0.1.0",
+  "author": "HexOffender",
+  "enabled": true,
+  "game_builds": [
+    26391405
+  ],
+  "requires": [
+    "sandbox"
+  ],
+  "uses": [
+    "mod-menu"
+  ]
+}

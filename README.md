@@ -11,9 +11,15 @@ It's a C++ mod made with [wcmods](https://github.com/HexOffender/warrior-cats-mo
 [Real-time combat](https://github.com/HexOffender/wcmods-realtime-combat).
 
 **In development.** [docs/plan.md](docs/plan.md) is the plan, step by step; each step is a pull request with its
-own tests. There's nothing to install yet. So far (step 1): the four Clans, made for each Sandbox mode save slot the
-first time you play it and kept beside the game's saves (`clan-life.json`), and the mod menu's **Allegiances** page,
-which lists them as the books' first pages do.
+own tests. There's nothing to install yet. So far:
+- **The Clans** (step 1, 1b): the four Clans, made for each Sandbox mode save slot the first time you play it and kept
+  beside the game's saves (`clan-life.json`), with genes their kits inherit, and the mod menu's **Allegiances** page,
+  which lists them as the books' first pages do.
+- **Life in camp** (step 3): the day goes round by the game's clock, dark at night. The camp your cat is in fills with
+  its Clan's cats, each living its day: the dawn patrol, hunters bringing prey to the pile, apprentices training with
+  their mentors, cats sharing tongues and lying in the sun, elders telling stories to kits, everyone to their dens at
+  night with a guard at the entrance. Each has a label with its name, rank and what it's doing. The **Camp places**
+  page moves a camp's fresh-kill pile, speaking rock or entrance to where you stand.
 
 ## Building it
 

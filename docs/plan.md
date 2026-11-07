@@ -264,6 +264,14 @@ navigation load (S3), and whether a walking cat can reach each place (S4).
 **Proof:** in game, a cat walks every route and reaches every place in all four territories; screenshots of each
 camp with its places marked.
 
+**The camps, done first (2026-11-07), for step 3:** each camp's places are found in the game as it runs, so there's no
+file of them to ship: every camp's den doors carry the game's own titles ("Leader's den", "Medicine Cat's den",
+"Elder's den", "Nursery", "Apprentice's den", "Warrior's den"), every camp has a fresh-kill pile actor, and the
+entrance is the camp's edge on its checkpoint's side; the speaking rock is put before the leader's den and six
+sunning spots about the camp. The mod menu's **Camp places** page moves the pile, the rock and the entrance to where
+your cat stands, or adds sunning spots, kept in `clan-life-places.json`. The border routes, hunting grounds, herb spots,
+the Island and the Moonpool come with step 4, which uses them.
+
 ### 3. Life in camp
 
 The near cats in the world, living by their needs: sleeping in their dens at night and getting up at dawn, eating at
@@ -273,6 +281,20 @@ rank, and what it's doing ("Sharing tongues with Ashfur"). Far cats as data, by 
 
 **Proof:** unit tests for the needs and choices; in game, a camp watched through a day at a fast clock: everyone
 asleep at night, the pile eaten in order, nobody standing still for long; 30 cats at a steady frame rate.
+
+**Done (2026-11-07), with the SDK's S7 (the day):** the day goes round by the game's clock, its parts as the books name
+them. As each part begins the deputy gives the Clan's orders (step 4 makes them a chain of command; for now the deputy
+decides them all): the dawn patrol, hunters in the morning and the afternoon, the apprentices' training with their
+mentors, the evening patrol, a night guard. Every other cat chooses by its rank, the part of the day, its needs
+(hunger, tiredness, loneliness, comfort, play) and its traits: eating at the pile (the elders, queens and kits first),
+sharing tongues with the cat it likes best, lying in the sun, grooming, playing, elders telling stories and kits
+listening, the medicine cat sorting herbs, apprentices taking moss to the elders, queens nursing. At night most go into
+their dens (out of the world) and some sleep curled up outside; patrols and hunters leave through the entrance and
+come back, the hunters with prey for the pile. Liking grows between cats that share tongues, train and patrol
+together. The sky follows the clock (settings: `night_sky`, `day_minutes`, `cats_in_world`). Your own Clan's cats that
+the game made are left as the game has them. In game, ThunderClan's camp at noon had 27 cats in the world doing five
+different things; at night 26 were asleep (14 inside their dens) with one guarding the entrance; at dawn a patrol of
+three was away.
 
 ### 4. Duties and orders
 

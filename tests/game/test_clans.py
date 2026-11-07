@@ -87,6 +87,17 @@ def test_the_four_clans_are_made_and_kept(agent):
     assert kept and set(kept) <= set(game_ids), (kept, game_ids)
 
 
+def test_looks_follow_genes(agent):
+    """Step 1b: every cat's coat is the one its genes show (where the game has a coat slot of that colour), each cat's
+    genes kept in the record; kits born to the Clans' cats are among them."""
+    checked, matching = _get(agent, "genes_checked"), _get(agent, "genes_matching")
+    assert checked > 60 and matching == checked, (checked, matching)
+    assert _get(agent, "born") > 5
+    slot = int(_get(agent, "slot"))
+    cats = _record()["slots"][str(slot)]["cats"]
+    assert all("genes" in c and len(c["genes"]["orange"]) == 2 for c in cats)
+
+
 def test_coming_back_reads_the_same_clans(agent):
     """Another slot gets Clans of its own; back to the first, its Clans are read back as they were, not made again."""
     slot = int(_get(agent, "slot"))

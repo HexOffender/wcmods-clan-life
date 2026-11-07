@@ -9,7 +9,8 @@
 // What it shares (wcmods::share), for tests and other mods to read from Lua as WCModsCpp.mods["clan-life"].get(name):
 // "on", "state" ("on", "disabled", "no-sandbox", "not-sandbox", "not-in-world", "no-tables"), "cats" (how many in the
 // four Clans), "made" (true when they were made this time, false when read back), "slot", "yours" (your Clan), and
-// "clan <Clan>" (how many in each).
+// "clan <Clan>" (how many in each), and for step 1b's tests "genes_checked", "genes_matching" (cats whose coat is
+// what their genes show), "tortoiseshells", "born" (cats with a mother in the Clans).
 #include <WCMods/WCMods.hpp>
 
 #include <format>
@@ -69,6 +70,24 @@ namespace
         wcmods::share("made", s.world->made_now);
         wcmods::share("slot", static_cast<double>(slot));
         wcmods::share("yours", std::string(cl::name(yours)));
+        // (for tests) the cats whose coat is what their genes show, of those whose genes' colour has a slot
+        const cl::Tables& t = clw::game().tables;
+        int checked = 0, matching = 0, torties = 0, kits = 0;
+        for (const clw::Cat& c : s.world->cats)
+        {
+            const cl::Phenotype p = cl::phenotype(c.genes, c.she);
+            torties += p.tortoiseshell;
+            kits += c.mother >= 0;
+            bool has_slot = false;
+            for (const auto& colour : t.coat_colours) has_slot = has_slot || colour == p.coat;
+            if (!has_slot || c.look.coat < 0 || static_cast<size_t>(c.look.coat) >= t.coat_colours.size()) continue;
+            ++checked;
+            matching += t.coat_colours[static_cast<size_t>(c.look.coat)] == p.coat;
+        }
+        wcmods::share("genes_checked", static_cast<double>(checked));
+        wcmods::share("genes_matching", static_cast<double>(matching));
+        wcmods::share("tortoiseshells", static_cast<double>(torties));
+        wcmods::share("born", static_cast<double>(kits));
         for (clw::Clan c : cl::clans)
         {
             int n = 0;

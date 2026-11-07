@@ -22,6 +22,8 @@
 #include <string_view>
 #include <vector>
 
+#include "genes.hpp"
+
 namespace cl
 {
     // ------------------------------------------------------------------------------------------- the Clans and ranks
@@ -231,6 +233,9 @@ namespace cl
         std::map<Part, std::vector<int>> kit_parts;                // the options a kit may have, by part (ForcedAppearance.csv)
         std::map<std::string, std::pair<double, double>> sizes;    // by role column: min, max scale
         std::vector<Coat> coats;                                   // each coat slot's family (coat_of its colour)
+        std::vector<std::optional<CoatColour>> coat_colours;       // each coat slot's colour as the genes name it
+        std::vector<double> coat_light;                            // and how light it is (0 to 1), for a tabby's stripes
+        std::vector<std::optional<EyeTone>> eye_tones;             // each eye slot's tone on the genes' scale
         double odd_eyes = 0.15;                                    // NPC.Heterochromia.Chance
     };
 
@@ -251,6 +256,7 @@ namespace cl
         int mother = -1, father = -1, mate = -1, mentor = -1;   // other cats' ids
         std::array<int, 2> traits{0, 1};
         bool from_game = false;      // one of the cats the game made for your Clan
+        Genome genes;                // step 1b: its looks follow them, and its kits inherit them
     };
     inline auto full_name(const Tables& t, const Cat& c) -> std::string
     {
@@ -305,6 +311,7 @@ namespace cl
                 k.she = k.rank == Rank::Queen || chance(0.5);   // the game keeps no gender for its cats
                 k.grown = std::uniform_real_distribution<double>(0, 1)(rng);
                 pick_traits(k);
+                k.genes = genes_of_look(c, k.look, k.she);
                 taken.insert(full_name(t, k));
             }
             auto count = [&](Rank r) { return static_cast<int>(std::count_if(out.begin(), out.end(), [&](const Cat& x) { return x.rank == r; })); };
@@ -439,6 +446,114 @@ namespace cl
             return pick < 0 ? other : pick;
         }
 
+        // Genes that give a look (a first cat's: the game's or the rules'), the hidden alleles drawn by the odds.
+        auto genes_of_look(Clan, const Look& l, bool she) -> Genome
+        {
+            auto at = [](const auto& v, int i) -> decltype(v[0]) { static const std::decay_t<decltype(v[0])> none{}; return i >= 0 && static_cast<size_t>(i) < v.size() ? v[static_cast<size_t>(i)] : none; };
+            const std::optional<CoatColour> colour = at(t.coat_colours, l.coat);
+            const std::optional<EyeTone> eyes = at(t.eye_tones, l.eye_colour);
+            const CoatColour coat = colour.value_or(CoatColour::Black);
+            Genome g = genome_for(coat, l.pattern != 0, is_white_marking(l.marking), l.fur >= long_fur_from,
+                                  eyes ? eyes->scale : 0.5, she, AlleleOdds{}, rng);
+            if (eyes && eyes->blue) g.eyes = 0.8;
+            return g;
+        }
+
+        // Slots whose colour is this one, or every slot when none is.
+        auto slots_of(CoatColour colour) const -> std::vector<int>
+        {
+            std::vector<int> out;
+            for (size_t i = 0; i < t.coat_colours.size(); ++i)
+                if (t.coat_colours[i] == colour) out.push_back(static_cast<int>(i));
+            return out;
+        }
+        auto pick(const std::vector<int>& from, int fallback) -> int
+        {
+            return from.empty() ? fallback : from[std::uniform_int_distribution<size_t>(0, from.size() - 1)(rng)];
+        }
+        // A tabby's stripes: the darkest slot of its coat's colour darker than its coat, else brown (a ginger or cream) or
+        // black.
+        auto stripes_for(int coat, CoatColour colour) const -> int
+        {
+            auto light = [&](int s) { return s >= 0 && static_cast<size_t>(s) < t.coat_light.size() ? t.coat_light[static_cast<size_t>(s)] : 0.5; };
+            int best = -1;
+            for (int s : slots_of(colour))
+                if (s != coat && light(s) < light(coat) - 0.05 && (best < 0 || light(s) < light(best))) best = s;
+            if (best >= 0) return best;
+            // none darker of its own colour: a ginger or cream's stripes brown, else black (a brown, a grey, a black's)
+            const bool orange = colour == CoatColour::Ginger || colour == CoatColour::Cream;
+            for (CoatColour dark : orange ? std::vector<CoatColour>{CoatColour::Brown, CoatColour::Black} : std::vector<CoatColour>{CoatColour::Black})
+            {
+                for (int s : slots_of(dark))
+                    if (s != coat && (best < 0 || light(s) < light(best))) best = s;
+                if (best >= 0) return best;
+            }
+            return coat;
+        }
+
+        // A kit's coat, pattern, markings, fur and eyes from what its genes show, kept as near its parents' as the genes
+        // allow (a parent's coat slot when it's the same colour, its pattern when it's a tabby too).
+        auto dress(Look& l, const Phenotype& p, const Look* mother, const Look* father, Clan clan) -> void
+        {
+            auto colour_of = [&](int slot) { return slot >= 0 && static_cast<size_t>(slot) < t.coat_colours.size() ? t.coat_colours[static_cast<size_t>(slot)] : std::nullopt; };
+            auto parent_slot = [&](CoatColour want) -> std::optional<int> {
+                std::vector<int> from;
+                for (const Look* x : {mother, father})
+                    if (x && colour_of(x->coat) == want) from.push_back(x->coat);
+                if (from.empty()) return std::nullopt;
+                return pick(from, from[0]);
+            };
+            l.coat = parent_slot(p.coat).value_or(pick(slots_of(p.coat), l.coat));
+            if (p.tortoiseshell)
+            {
+                l.pattern = p.white_patches ? calico_pattern : tortoiseshell_pattern;
+                const CoatColour orange = (p.coat == CoatColour::Grey || p.coat == CoatColour::LightBrown) ? CoatColour::Cream : CoatColour::Ginger;
+                l.pattern_colour = pick(slots_of(orange), l.pattern_colour);
+            }
+            else if (p.tabby)
+            {
+                std::vector<int> theirs;
+                for (const Look* x : {mother, father})
+                    if (x && is_tabby_pattern(x->pattern)) theirs.push_back(x->pattern);
+                l.pattern = !theirs.empty() ? pick(theirs, 13) : tabby_patterns[std::uniform_int_distribution<size_t>(0, tabby_patterns.size() - 1)(rng)];
+                l.pattern_colour = stripes_for(l.coat, p.coat);
+            }
+            else l.pattern = 0;
+            if (p.white_patches)
+            {
+                std::vector<int> theirs;
+                for (const Look* x : {mother, father})
+                    if (x && is_white_marking(x->marking)) theirs.push_back(x->marking);
+                l.marking = !theirs.empty() ? pick(theirs, 9) : white_markings[std::uniform_int_distribution<size_t>(0, white_markings.size() - 1)(rng)];
+                l.marking_colour = pick(slots_of(CoatColour::White), l.marking_colour);
+            }
+            else if (is_white_marking(l.marking)) l.marking = 0;
+            const bool long_now = l.fur >= long_fur_from;
+            if (p.long_fur != long_now) l.fur = p.long_fur ? long_fur_from + static_cast<int>(rng() % 4) : static_cast<int>(rng() % long_fur_from);
+            // eyes: blue for a blue-eyed white cat, else the slot nearest the genes' tone (among the Clan's own eyes first)
+            int best = -1;
+            double best_d = 1e9;
+            auto cl = t.looks.find(clan);
+            for (size_t i = 0; i < t.eye_tones.size(); ++i)
+            {
+                const auto& tone = t.eye_tones[i];
+                if (!tone || tone->blue != p.blue_eyes) continue;
+                double d = std::abs(tone->scale - p.eyes);
+                if (cl != t.looks.end() && cl->second.count(Part::EyeColour))
+                {
+                    const auto& w = cl->second.at(Part::EyeColour);
+                    if (i >= w.size() || w[i] <= 0) d += 0.25;   // the Clan's own eye colours first
+                }
+                if (d < best_d)
+                {
+                    best_d = d;
+                    best = static_cast<int>(i);
+                }
+            }
+            if (best >= 0) l.eye_colour = best;
+            l.eye_colour2 = chance(t.odd_eyes) ? random_eye(clan, l.eye_colour) : l.eye_colour;
+        }
+
         auto coat_family(const Look& l) const -> Coat
         {
             return l.coat >= 0 && static_cast<size_t>(l.coat) < t.coats.size() ? t.coats[static_cast<size_t>(l.coat)] : Coat::Other;
@@ -511,6 +626,10 @@ namespace cl
             c.she = r == Rank::Queen ? true : chance(0.5);
             c.moons = moons_for(r);
             c.look = random_look(clan);
+            // a tortoiseshell or calico coat is a she-cat's (the game keeps them off its own cats; the mod's genes give
+            // them to kits): a first cat's look keeps to the coats a single cat's genes show
+            if (c.look.pattern == tortoiseshell_pattern || c.look.pattern == calico_pattern) c.look.pattern = 0;
+            c.genes = genes_of_look(clan, c.look, c.she);
             finish(c);
             return c;
         }
@@ -526,6 +645,7 @@ namespace cl
             c.moons = moons;
             Look own = random_look(clan);
             Look l;
+            // the shape (body, face, ears, eyes' shape, tail, whiskers) after one parent or the other, part by part
             for (Part p : parts)
             {
                 const double roll = std::uniform_real_distribution<double>(0, 1)(rng);
@@ -533,7 +653,11 @@ namespace cl
                 else if (father && roll < 0.9) part(l, p) = part(father->look, p);
                 else part(l, p) = part(own, p);
             }
-            l.eye_colour2 = chance(t.odd_eyes) ? random_eye(clan, l.eye_colour) : l.eye_colour;
+            // the coat, pattern, markings, fur and eye colour from the genes it inherits (a parent missing: the Clan's)
+            const Genome m = has_mother ? mother.genes : genes_of_look(clan, own, true);
+            const Genome f = father ? father->genes : genes_of_look(clan, random_look(clan), false);
+            c.genes = inherit(m, f, c.she, rng);
+            dress(l, phenotype(c.genes, c.she), has_mother ? &mother.look : nullptr, father ? &father->look : nullptr, clan);
             c.look = l;
             if (has_mother) c.mother = mother.id;
             if (father) c.father = father->id;

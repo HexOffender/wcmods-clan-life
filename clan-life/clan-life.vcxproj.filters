@@ -25,6 +25,9 @@
     <ClInclude Include="cpp\src\describe.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="cpp\src\genes.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="cpp\src\world.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "camp_life.hpp"
 #include "clans.hpp"
 #include "describe.hpp"
 #include "world.hpp"
@@ -42,6 +43,14 @@ namespace clw::allegiances
         };
         auto line = [&](const Cat& c) {
             std::wstring text = std::format(L"{}: {}", wcmods::wide(cl::full_name(game().tables, c)), words(c));
+            // what it wants most
+            if (auto it = life::state().wants.find(c.id); it != life::state().wants.end() && !it->second.empty())
+            {
+                const cl::WantOf& want = it->second.front();
+                if (want.want == cl::Want::Avenge) text += std::format(L"; wants revenge on {}", name_of(w, want.target));
+                else if (want.want == cl::Want::WinAffection) text += std::format(L"; sweet on {}", name_of(w, want.target));
+                else text += L"; wants " + wcmods::wide(cl::want_words(want.want, cl::their(c)));
+            }
             if (const Cat* apprentice = mentored_by(c.id))
                 text += std::format(L"; apprentice, {}", wcmods::wide(cl::full_name(game().tables, *apprentice)));
             if (c.rank == Rank::Queen)

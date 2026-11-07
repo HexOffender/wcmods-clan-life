@@ -82,5 +82,16 @@ def test_six_moons(agent):
     news = [n[1] for n in after.get("news", [])]
     assert any(" is now " in n for n in news), news[-10:]
     assert after["moons"] == moons + 6
+    # what happened is remembered: each apprentice its mentor, among others
+    minds = after.get("minds", {})
+    for kid in kits:
+        mine = minds.get(str(kid), [])
+        assert any(m[0] == 0 and m[1] == kid for m in mine), (kid, mine[:3])   # Happened::Apprenticed, by it
+    # and the Allegiances page says what cats want
+    agent.menu.open()
+    agent.menu.open("Allegiances")
+    page = agent.menu.read()
+    assert page.has("wants"), page.text()[:2000]
+    agent.menu.close()
     # the camp's cats are back in the world
     _until(agent, lambda: json.loads(_get(agent, "life"))["in_world"] >= 10, 30, "the camp's cats back in the world")

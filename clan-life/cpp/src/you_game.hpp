@@ -87,12 +87,77 @@ namespace clw::you
     }
 
     // ------------------------------------------------------------------------------------------- talking
-    // What a clanmate says when you talk to it: by how it feels about you and what it's doing.
+    // What a cat says when you talk to it: how it feels about you (its memories), then something it remembers, something
+    // it wants, or what it's doing, with its bond with you in its tone.
     inline auto line_for(const World& w, const Cat& c, const life::CatLife& l, double bond, bool yours) -> std::wstring
     {
         const std::wstring you = your_name();
-        if (!yours)
+        const cl::Tables& t = game().tables;
+        auto nm = [&](int id) -> std::wstring {
+            if (id == your_id) return you;
+            const Cat* o = by_id(w, id);
+            return o ? wcmods::wide(cl::full_name(t, *o)) : std::wstring(L"them");
+        };
+        const cl::Opinion o = cl::opinion(w.minds, c.id, your_id, w.moons);
+        if (o.grudge > 40) return std::format(L"Stay away from me, {}. I haven't forgotten.", you);
+        if (o.fear > 40) return std::format(L"I... I don't want any trouble, {}.", you);
+        if (!yours && bond < 40)
             return std::format(L"You smell of {}, {}. Say what you came for and go home.", wcmods::wide(cl::name(w.yours)), you);
+        // something it remembers from the last two moons, of its own
+        std::wstring remembered;
+        if (auto it = w.minds.of.find(c.id); it != w.minds.of.end())
+            for (auto m = it->second.rbegin(); m != it->second.rend() && remembered.empty(); ++m)
+            {
+                if (m->moon < w.moons - 2) continue;
+                switch (m->what)
+                {
+                case cl::Happened::Apprenticed:
+                    if (m->who == c.id) remembered = std::format(L"My mentor is {}. I'm going to make them proud.", nm(m->whom));
+                    break;
+                case cl::Happened::Warrior:
+                    if (m->who == c.id) remembered = L"I'm a warrior now! I sat my vigil all night without a sound.";
+                    break;
+                case cl::Happened::Deputy:
+                    if (m->grudge > 0) remembered = std::format(L"{} as deputy? We'll see how long that lasts.", nm(m->who));
+                    else if (m->who != c.id) remembered = std::format(L"{} will make a fine deputy.", nm(m->who));
+                    break;
+                case cl::Happened::Mates:
+                case cl::Happened::YourMate:
+                    if (m->toward >= 0 && m->liking > 0) remembered = std::format(L"{} and I are mates now. I've never been happier.", nm(m->toward));
+                    else if (m->grudge > 0) remembered = std::format(L"So {} has a mate now. Good for them, I suppose.", nm(m->toward));
+                    break;
+                case cl::Happened::Kits:
+                    if (m->who == c.id || m->whom == c.id) remembered = L"Have you seen my kits? They're into everything already.";
+                    break;
+                case cl::Happened::Killed:
+                    remembered = std::format(L"{} killed {}. I'll never forget it.", nm(m->who), nm(m->whom));
+                    break;
+                case cl::Happened::Rescued:
+                    if (m->whom == c.id) remembered = std::format(L"I'd be crow-food if {} hadn't come for me.", nm(m->who));
+                    break;
+                default: break;
+                }
+            }
+        // something it wants
+        std::wstring wanting;
+        if (auto it = life::state().wants.find(c.id); it != life::state().wants.end() && !it->second.empty())
+        {
+            const cl::WantOf& want = it->second.front();
+            switch (want.want)
+            {
+            case cl::Want::Rise: wanting = std::format(L"One day I'll be deputy of {}. You'll see.", wcmods::wide(cl::name(c.clan))); break;
+            case cl::Want::ProtectKin: wanting = L"Nothing gets near my kits while I'm here."; break;
+            case cl::Want::ProveSelf: wanting = L"Next patrol, I'll show them what I can do."; break;
+            case cl::Want::Avenge:
+                wanting = want.target == your_id ? std::format(L"One day, {}. One day.", you)
+                                                 : std::format(L"{} will answer for what happened. I'm training every day.", nm(want.target));
+                break;
+            case cl::Want::WinAffection: wanting = std::format(L"Do you think {} likes me? Don't tell them I asked!", nm(want.target)); break;
+            case cl::Want::FeedClan: wanting = L"The pile's never full enough. I'll hunt again before sundown."; break;
+            case cl::Want::KeepPeace: wanting = L"Quarrels are like burrs: best pulled out early."; break;
+            }
+        }
+        // what it's doing
         static const std::map<cl::Doing, std::vector<const wchar_t*>> doing{
             {cl::Doing::Eating, {L"This vole's still warm. There's more on the pile if you're hungry.", L"Hunting's been good. Eat while you can."}},
             {cl::Doing::SharingTongues, {L"Sit with us a while. The sun's warm today.", L"We were talking about the last Gathering."}},
@@ -101,17 +166,24 @@ namespace clw::you
             {cl::Doing::Playing, {L"Watch me pounce! I'm going to be the best hunter in the Clan!", L"Catch me if you can!"}},
             {cl::Doing::TellingStories, {L"Hush now, the kits are listening. I was telling them about the great storm."}},
             {cl::Doing::Listening, {L"Shh! It's just getting to the good part."}},
-            {cl::Doing::Training, {L"Again! Keep your weight back this time.", L"My mentor says I'm getting faster."}},
+            {cl::Doing::Training, {L"Again! Keep your weight back this time.", L"Every day I practise. Every single day."}},
             {cl::Doing::Guarding, {L"All quiet so far. Get some sleep; I'll wake the camp if anything comes."}},
             {cl::Doing::Herbs, {L"Marigold for wounds, poppy seeds for pain. Don't touch those, they're deathberries."}},
             {cl::Doing::Chores, {L"Fresh moss for the elders. They say the old bedding's full of ticks."}},
             {cl::Doing::Nursing, {L"The kits have only just settled. Speak softly."}},
+            {cl::Doing::WatchingKits, {L"I like to keep an eye on them. You never know what's out there."}},
             {cl::Doing::Watching, {L"The Clan is strong this moon. StarClan willing, it'll stay that way."}},
             {cl::Doing::Sleeping, {L"Mrrf... what? Is it dawn already?"}},
         };
         std::wstring about = L"Good to see you.";
         if (auto it = doing.find(l.act.doing); it != doing.end() && !it->second.empty())
             about = it->second[static_cast<size_t>(c.id + w.days) % it->second.size()];
+        const int pick = (c.id + w.days + static_cast<int>(bond)) % 3;
+        if (pick == 0 && !remembered.empty()) about = remembered;
+        else if (pick == 1 && !wanting.empty()) about = wanting;
+        else if (!remembered.empty() && pick != 2) about = remembered;
+        if (o.respect > 30) about = std::format(L"I'd follow you into any fight, {}. {}", you, about);
+        if (!yours) about = L"Don't let my Clanmates see us talking. " + about;
         if (bond < 30) return std::format(L"Oh. {}. {}", you, about);
         if (bond < 60) return std::format(L"Hello, {}. {}", you, about);
         if (bond < 90) return std::format(L"{}! I was hoping you'd come by. {}", you, about);
@@ -127,9 +199,10 @@ namespace clw::you
         Cat* c = find(w, id);
         if (!c) return;
         const bool yours = c->clan == w.yours;
-        const double bond = yours ? cl::talk(w.you, c->id, w.days) : cl::bond_of(w.you, c->id);
+        // (a cat of another Clan grows fond of you too: a friend there, even a mate, is frowned on, not forbidden)
+        const double bond = cl::bond_of(w.you, c->id) >= 20 || yours ? cl::talk(w.you, c->id, w.days) : cl::bond_of(w.you, c->id);
         std::wstring words = line_for(w, *c, life::state().cats[c->id], bond, yours);
-        if (yours && cl::could_be_mates(w.you, *c, w.yours, your_rank()))
+        if (cl::could_be_mates(w.you, *c, w.yours, your_rank()))
             words += L" ...I've been thinking about us. If you'd have me as your mate, you only need to say so.";
         const std::wstring speaker = wcmods::wide(cl::full_name(game().tables, *c));
         wcmods::say(speaker, words);
@@ -151,7 +224,7 @@ namespace clw::you
         const double hours = real_seconds * 24.0 / *length;
         for (Cat& c : w.cats)
         {
-            if (c.clan != w.yours) continue;
+            if (c.clan != w.yours && cl::bond_of(w.you, c.id) <= 20) continue;   // (another Clan's cat once you've talked)
             auto it = life::state().cats.find(c.id);
             if (it == life::state().cats.end() || !it->second.npc) continue;
             auto where = it->second.npc->location();
@@ -292,6 +365,10 @@ namespace clw::you
             if (ui.button(L"Yes"))
             {
                 cl::become_mates(y, *asker);
+                std::vector<int> theirs;
+                for (const Cat& c : w->cats)
+                    if (c.clan == asker->clan) theirs.push_back(c.id);
+                cl::happened(w->minds, cl::Happened::YourMate, your_id, asker->id, w->moons, theirs, w->cats, w->liking);
                 w->news.push_back({std::string(cl::name(w->yours)), cl::full_name(t, *asker) + " and " + wcmods::utf8(your_name()) + " have become mates."});
                 clw::save(*w);
                 return;
@@ -299,23 +376,44 @@ namespace clw::you
             if (ui.button(L"Not now"))
             {
                 y.declined[asker->id] = w->days;
+                cl::happened(w->minds, cl::Happened::Declined, your_id, asker->id, w->moons, {asker->id}, w->cats, w->liking);
                 y.asked_by = -1;
             }
         }
         if (!cl::grown(rank)) ui.note(L"Apprentices don't take mates: once your cat is a warrior, a clanmate who's close enough can become its mate.");
-        // the Clan
+        // your Clan, then the cats of other Clans you've talked with
         ui.separator();
         std::vector<Cat*> clan;
         for (Cat& c : w->cats)
-            if (c.clan == w->yours && !c.from_game && c.rank != Rank::Kit) clan.push_back(&c);
-        std::sort(clan.begin(), clan.end(), [&](const Cat* a, const Cat* b) { return cl::bond_of(y, a->id) > cl::bond_of(y, b->id); });
+            if (!c.from_game && c.rank != Rank::Kit && (c.clan == w->yours || cl::bond_of(y, c.id) > 20)) clan.push_back(&c);
+        std::stable_sort(clan.begin(), clan.end(), [&](const Cat* a, const Cat* b) {
+            if ((a->clan == w->yours) != (b->clan == w->yours)) return a->clan == w->yours;
+            return cl::bond_of(y, a->id) > cl::bond_of(y, b->id);
+        });
+        bool others = false;
         for (Cat* c : clan)
         {
+            if (c->clan != w->yours && !others)
+            {
+                others = true;
+                ui.text(L"Of other Clans");
+            }
             const double bond = cl::bond_of(y, c->id);
-            ui.progress(std::format(L"{} ({})", name(*c), wcmods::wide(cl::name(c->rank))), bond / 100.0);
+            // how it feels about you, past the bond: from what it remembers
+            const cl::Opinion o = cl::opinion(w->minds, c->id, your_id, w->moons);
+            std::wstring feels;
+            if (o.grudge > 25) feels = L", holds a grudge against you";
+            else if (o.fear > 25) feels = L", is afraid of you";
+            else if (o.respect > 20) feels = L", respects you";
+            const std::wstring where = c->clan == w->yours ? L"" : L", " + wcmods::wide(cl::name(c->clan));
+            ui.progress(std::format(L"{} ({}{}){}", name(*c), wcmods::wide(cl::name(c->rank)), where, feels), bond / 100.0);
             if (cl::could_be_mates(y, *c, w->yours, rank) && ui.button(std::format(L"Ask {} to be your mate", name(*c))))
             {
                 cl::become_mates(y, *c);
+                std::vector<int> theirs;
+                for (const Cat& o2 : w->cats)
+                    if (o2.clan == c->clan) theirs.push_back(o2.id);
+                cl::happened(w->minds, cl::Happened::YourMate, your_id, c->id, w->moons, theirs, w->cats, w->liking);
                 w->news.push_back({std::string(cl::name(w->yours)), cl::full_name(t, *c) + " and " + wcmods::utf8(your_name()) + " have become mates."});
                 clw::save(*w);
                 return;

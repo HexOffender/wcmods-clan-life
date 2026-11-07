@@ -13,6 +13,8 @@
 #include <map>
 #include <random>
 #include <set>
+#include <string>
+#include <tuple>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -54,6 +56,7 @@ namespace cl
         Resting,
         Wandering,
         Watching,     // the leader on the speaking rock, looking over the camp
+        WatchingKits, // a parent keeping watch over its kits by the nursery
     };
     constexpr auto name(Doing d) -> std::string_view
     {
@@ -77,6 +80,7 @@ namespace cl
         case Doing::Resting: return "resting";
         case Doing::Wandering: return "wandering";
         case Doing::Watching: return "watching over the camp";
+        case Doing::WatchingKits: return "watching over the kits";
         }
         return "";
     }
@@ -120,8 +124,63 @@ namespace cl
         case Doing::Resting: return Spot::OwnDen;
         case Doing::Wandering: return Spot::Clearing;
         case Doing::Watching: return Spot::Rock;
+        case Doing::WatchingKits: return Spot::Nursery;
         }
         return Spot::Clearing;
+    }
+
+    // ------------------------------------------------------------------------------------------- wants
+    // What a cat wants (mind.hpp works them out from its traits, its rank and its memories): they lean its choices.
+    enum class Want
+    {
+        Rise,         // to be deputy, or leader
+        ProtectKin,   // to keep its kits safe
+        ProveSelf,    // to show its Clan what it can do
+        Avenge,       // to settle a score with `target`
+        WinAffection, // to win `target`'s heart
+        FeedClan,     // to keep the fresh-kill pile full
+        KeepPeace,    // to keep the Clan at peace
+    };
+    constexpr auto name(Want w) -> std::string_view
+    {
+        switch (w)
+        {
+        case Want::Rise: return "to rise in the Clan";
+        case Want::ProtectKin: return "to keep its kits safe";
+        case Want::ProveSelf: return "to prove itself";
+        case Want::Avenge: return "revenge";
+        case Want::WinAffection: return "a cat's affection";
+        case Want::FeedClan: return "to keep the Clan fed";
+        case Want::KeepPeace: return "to keep the peace";
+        }
+        return "";
+    }
+    // "to keep her kits safe", "to prove themself": a want in a cat's own words (`their` "his", "her" or "their").
+    inline auto want_words(Want w, std::string_view their) -> std::string
+    {
+        const std::string t(their);
+        const std::string self = t == "his" ? "himself" : t == "her" ? "herself" : "themself";
+        switch (w)
+        {
+        case Want::ProtectKin: return "to keep " + t + " kits safe";
+        case Want::ProveSelf: return "to prove " + self;
+        default: return std::string(name(w));
+        }
+    }
+    struct WantOf
+    {
+        Want want = Want::Rise;
+        int target = -1;     // the cat it's about (Avenge, WinAffection)
+        double strength = 0; // 0 to 1
+    };
+    using WantsById = std::map<int, std::vector<WantOf>>;
+    inline auto wants(const WantsById& w, int id, Want want) -> const WantOf*
+    {
+        auto it = w.find(id);
+        if (it == w.end()) return nullptr;
+        for (const WantOf& x : it->second)
+            if (x.want == want) return &x;
+        return nullptr;
     }
 
     // ------------------------------------------------------------------------------------------- needs
@@ -193,7 +252,9 @@ namespace cl
     {
         std::map<int, Activity> given;   // by cat id
     };
-    inline auto orders_for(const std::vector<const Cat*>& clan, DayPart part, const std::map<int, Needs>& needs, std::mt19937& rng) -> Orders
+    // `eager` are the wants of the cats that volunteer first (to rise, to prove themselves, to keep the Clan fed).
+    inline auto orders_for(const std::vector<const Cat*>& clan, DayPart part, const std::map<int, Needs>& needs, std::mt19937& rng,
+                           const WantsById& eager = {}) -> Orders
     {
         Orders o;
         auto tired = [&](const Cat* c) {
@@ -204,7 +265,13 @@ namespace cl
         for (const Cat* c : clan)
             if (c->rank == Rank::Warrior || c->rank == Rank::Deputy) warriors.push_back(c);
         std::shuffle(warriors.begin(), warriors.end(), rng);
-        std::stable_sort(warriors.begin(), warriors.end(), [&](const Cat* a, const Cat* b) { return tired(a) < tired(b); });
+        auto keen = [&](const Cat* c) {
+            return wants(eager, c->id, Want::Rise) || wants(eager, c->id, Want::FeedClan) || wants(eager, c->id, Want::ProveSelf);
+        };
+        // the rested before the tired, the keen first among them, then the most rested
+        std::stable_sort(warriors.begin(), warriors.end(), [&](const Cat* a, const Cat* b) {
+            return std::tuple(tired(a) >= 0.6, !keen(a), tired(a)) < std::tuple(tired(b) >= 0.6, !keen(b), tired(b));
+        });
         auto free = [&](const Cat* c) { return !o.given.contains(c->id) && tired(c) < 0.8; };
         auto apprentice_of = [&](const Cat* mentor) -> const Cat* {
             for (const Cat* a : clan)
@@ -269,7 +336,8 @@ namespace cl
         bool elders_fed = true;
         int eating = 0;                                // at the pile now (a few at a time)
     };
-    inline auto choose(const Cat& c, const Needs& n, DayPart part, const Others& others, const Liking& liking, std::mt19937& rng) -> Activity
+    inline auto choose(const Cat& c, const Needs& n, DayPart part, const Others& others, const Liking& liking, std::mt19937& rng,
+                       const std::vector<WantOf>& wants = {}) -> Activity
     {
         std::uniform_real_distribution<double> u(0, 1);
         auto hours = [&](double lo, double hi) { return lo + (hi - lo) * u(rng); };
@@ -320,6 +388,27 @@ namespace cl
             if (c.moons < 3 || u(rng) < 0.25) return {Doing::Nursing, c.mother, hours(0.5, 1.5)};
         }
         if (r == Rank::Apprentice && part == DayPart::Morning && u(rng) < 0.3) return {Doing::Chores, -1, hours(0.5, 1)};
+        // what it wants leans it: practising to settle a score or prove itself, seeking out the one it's fond of,
+        // keeping watch over its kits
+        for (const WantOf& w : wants)
+        {
+            const double s = std::clamp(w.strength, 0.0, 1.0);
+            switch (w.want)
+            {
+            case Want::Avenge:
+            case Want::ProveSelf:
+                if (!kit && u(rng) < 0.1 + 0.35 * s) return {Doing::Training, -1, hours(1, 1.5)};
+                break;
+            case Want::WinAffection:
+                for (const Cat* o : others.free)
+                    if (o->id == w.target && u(rng) < 0.5 * s) return {Doing::SharingTongues, o->id, hours(1, 2)};
+                break;
+            case Want::ProtectKin:
+                if (!queen && u(rng) < 0.4 * s) return {Doing::WatchingKits, -1, hours(1, 2)};
+                break;
+            default: break;
+            }
+        }
         // then whichever need is strongest
         const bool young = kit || r == Rank::Apprentice;
         struct Pull

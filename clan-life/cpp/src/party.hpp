@@ -106,7 +106,16 @@ namespace clw::party
             if (a.yes)
             {
                 s.ids.push_back(id);
-                life::state().cats[id].along = true;
+                life::CatLife& l = life::state().cats[id];
+                l.along = true;
+                // what it was doing put down: prey it was bringing home, its walk
+                l.bringing_prey = false;
+                l.there = false;
+                if (l.npc && l.npc->actor())
+                {
+                    l.npc->drop_carried();
+                    l.npc->stop();
+                }
             }
         }
         say(*c, a.says);

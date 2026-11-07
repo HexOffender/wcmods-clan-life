@@ -320,8 +320,10 @@ prey to the pile (its number going up), an apprentice taking moss to the elders'
   elders), with the game's objective panel. Doing them raises your standing with the Clan (the game's clan bond).
 - **Joining a patrol:** it waits for you at the entrance, and you walk the route with it; as a senior warrior you
   can be asked to lead one.
-- **Taking clanmates along:** ask a friend to come with you (its liking for you decides), and it walks with you,
-  hunts beside you, and goes home when you tell it to or at nightfall.
+- **Taking clanmates along** (your party; done first, with step 8's fighting, as wcmods' rivals-and-motives plan's
+  Part B2): ask up to three clanmates to come with you on the Clanmates page (their bond with you and who they are
+  decide), and they walk with you anywhere, fight beside you with Real-time combat, and go home when you tell them to or
+  at nightfall. Hunting beside you comes with the rest of this step.
 
 **Proof:** in game, a morning duty given, done and counted; a patrol joined from start to end; a friend following
 your cat across a territory and home again.
@@ -393,7 +395,8 @@ the border; a Gathering from the walk there to the walk home.
 
 Clanmates with you (step 5) and patrols near a fight join it: they go after the animal you're fighting and hit it
 with the cats' own fight moves, and a patrol that meets an animal fights it. It needs a small addition to Real-time
-combat (allies it knows about), done as its own pull request there.
+combat (allies it knows about), done as its own pull request there. Your party comes first (the owner's, 2026-11-07:
+wcmods' rivals-and-motives plan, Part B2); patrols joining fights come with step 4's patrols.
 
 **Proof:** in game, a friend helping your cat beat a rabbit; a patrol driving an animal off.
 

@@ -69,6 +69,102 @@ namespace cl
         }
     } // namespace moons_detail
 
+    // A cat's death: gone from the Clans, its mate free, its apprentices given new mentors, and its place filled at once
+    // as the warrior code has it (rule 8: the deputy leads, a leader's name ending in -star; rule 9: a new deputy named
+    // before moonhigh; a medicine cat's apprentice takes its place). The news (the death's own told by the caller, who
+    // knows how it died).
+    inline auto death(std::vector<Cat>& cats, int id, const Tables& t, std::mt19937& rng) -> std::vector<MoonNews>
+    {
+        std::vector<MoonNews> news;
+        auto it = std::find_if(cats.begin(), cats.end(), [&](const Cat& c) { return c.id == id; });
+        if (it == cats.end()) return news;
+        const Cat dead = *it;
+        cats.erase(it);
+        Maker m(t, static_cast<uint32_t>(rng()));
+        for (const Cat& c : cats)
+        {
+            m.taken.insert(full_name(t, c));
+            m.next_id = std::max(m.next_id, c.id + 1);
+        }
+        auto name = [&](const Cat& c) { return full_name(t, c); };
+        auto say = [&](std::string text, std::optional<Happened> what = std::nullopt, int who = -1) {
+            news.push_back({dead.clan, std::move(text), what, who, -1});
+        };
+        auto of = [&](Rank r) {
+            std::vector<Cat*> out;
+            for (Cat& c : cats)
+                if (c.clan == dead.clan && c.rank == r) out.push_back(&c);
+            return out;
+        };
+        auto mentoring = [&](int mentor) {
+            for (const Cat& c : cats)
+                if (c.mentor == mentor && (c.rank == Rank::Apprentice || c.rank == Rank::MedicineApprentice)) return true;
+            return false;
+        };
+        for (Cat& c : cats)
+        {
+            if (c.mate == id) c.mate = -1;
+            if (c.mentor == id) c.mentor = -1;
+        }
+        // a deputy for a Clan that hasn't one: the oldest warrior that's mentoring (rule 7), else the oldest
+        auto name_deputy = [&] {
+            if (!of(Rank::Deputy).empty()) return;
+            Cat* best = nullptr;
+            for (Cat* w : of(Rank::Warrior))
+            {
+                if (w->moons < 18) continue;
+                const bool better = !best || (mentoring(w->id) != mentoring(best->id) ? mentoring(w->id) : w->moons > best->moons);
+                if (better) best = w;
+            }
+            if (!best) return;
+            best->rank = Rank::Deputy;
+            say(std::format("{} is the new deputy.", name(*best)), Happened::Deputy, best->id);
+        };
+        if (dead.rank == Rank::Leader)
+        {
+            auto deputies = of(Rank::Deputy);
+            Cat* next = deputies.empty() ? nullptr : deputies.front();
+            if (!next)   // no deputy: the oldest warrior
+                for (Cat* w : of(Rank::Warrior))
+                    if (!next || w->moons > next->moons) next = w;
+            if (next)
+            {
+                const std::string was = name(*next);
+                next->rank = Rank::Leader;
+                m.rename(*next);
+                say(std::format("{} leads {} now, as {}.", was, cl::name(dead.clan), name(*next)), Happened::Deputy, next->id);
+            }
+        }
+        if (dead.rank == Rank::Leader || dead.rank == Rank::Deputy) name_deputy();
+        if (dead.rank == Rank::MedicineCat)
+        {
+            auto apprentices = of(Rank::MedicineApprentice);
+            if (!apprentices.empty())
+            {
+                Cat* next = apprentices.front();
+                const std::string was = name(*next);
+                next->rank = Rank::MedicineCat;
+                next->mentor = -1;
+                m.rename(*next);
+                say(std::format("{} is now the medicine cat, {}.", was, name(*next)), Happened::Warrior, next->id);
+            }
+        }
+        // its apprentices: a new mentor each, a warrior not mentoring
+        for (Cat& a : cats)
+        {
+            if (a.clan != dead.clan || a.rank != Rank::Apprentice || a.mentor != -1) continue;
+            for (Cat* w : of(Rank::Warrior))
+                if (!mentoring(w->id) && w->id != a.mother && w->id != a.father)
+                {
+                    a.mentor = w->id;
+                    say(std::format("{} is {}'s new mentor.", name(*w), name(a)), Happened::Apprenticed, a.id);
+                    news.back().whom = w->id;
+                    break;
+                }
+        }
+        return news;
+    }
+
     // A litter born to a mother and father (either can be your cat, who isn't among `cats`): the kits, added to `cats`.
     inline auto litter_for(std::vector<Cat>& cats, const Tables& t, const Cat& mother, const Cat* father, std::mt19937& rng) -> std::vector<Cat>
     {

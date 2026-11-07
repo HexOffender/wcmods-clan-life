@@ -29,6 +29,10 @@ own tests. There's nothing to install yet. So far:
   wants; the Clanmates page what each thinks of you.
 - **Your place** (in part): talk to your clanmates (or other Clans' cats) and they grow fond of you. On the **Clanmates** page, a clanmate who's
   close enough can become your mate once your cat is grown, and your kits wait there for you to name them.
+- **Fights** (with Real-time combat, wcmods' [rivals and motives plan](https://github.com/HexOffender/warrior-cats-mods/blob/main/docs/plans/rivals-and-motives.md),
+  part B): strike a Clan cat and it fights back as a cat. Beaten, it yields; walk away to spare it, or give the
+  killing blow. The cats who saw it remember, the victim's Clan hears of it, and a cat killed is gone from the Clans
+  (its place as leader, deputy, medicine cat or mentor filled). What the Clans make of it comes next in that plan.
 
 ## Building it
 
@@ -47,3 +51,5 @@ in `clan-life\`.
   python wcmods.py agent install --with <this repository>\clan-life --with <wcmods-sandbox>\sandbox
   python wcmods.py agent test <this repository>\tests\game --launch
   ```
+
+  `test_fights.py` needs Real-time combat installed too (`--with <wcmods-realtime-combat>\realtime-combat`).

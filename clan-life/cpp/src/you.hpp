@@ -1,6 +1,6 @@
 // you.hpp: your cat in the Clan (step 5's bond, step 6's mate and kits), as plain rules with nothing of the game in them
-// (unit-tested in tests/unit). Each clanmate's liking for your cat (its bond, 0 to 100) grows as you talk (most the first
-// time in a day) and as you spend time near it. Past a bond of 90 a grown cat of your Clan (any gender) will become your
+// (unit-tested in tests/unit). Each cat's liking for your cat (its bond, 0 to 100) grows as you talk (most the first
+// time in a day) and as you spend time near it. Past a bond of 90 a grown cat of any Clan and any gender will become your
 // mate if you ask (and at 95 it may ask you), once your cat is grown itself: the only bars are age and the bond (and
 // close kin). With a mate, kits come in time: when one of you can carry kits and the other can't, the one who can is
 // expecting for two moons, then the kits are born in the nursery with genes from you both; otherwise you now and then
@@ -77,7 +77,8 @@ namespace cl
     }
     inline auto could_be_mates(const You& y, const Cat& c, Clan yours, Rank your_rank, const YouRules& r = {}) -> bool
     {
-        return grown(your_rank) && grown(c.rank) && c.rank != Rank::Kit && y.mate < 0 && c.mate == -1 && c.clan == yours &&
+        (void)yours;   // (any Clan's: a mate from another Clan is frowned on, not forbidden)
+        return grown(your_rank) && grown(c.rank) && c.rank != Rank::Kit && y.mate < 0 && c.mate == -1 &&
                c.mother != your_id && c.father != your_id && bond_of(y, c.id, r) >= r.mates_at;
     }
     inline auto become_mates(You& y, Cat& c) -> void

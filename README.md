@@ -24,7 +24,10 @@ own tests. There's nothing to install yet. So far:
   apprenticed and apprentices named warriors, old cats join the elders, cats who like each other become mates (any
   genders: cats are toms, she-cats or non-binary, and can be trans), and kits are born in the nursery with genes from
   both parents, or taken in. The news shows on the HUD and on the Allegiances page.
-- **Your place** (in part): talk to your clanmates and they grow fond of you. On the **Clanmates** page, a clanmate who's
+- **Minds:** cats remember what happens to them and theirs, tell each other, and want things (to rise, to keep their
+  kits safe, revenge, a cat's affection...), which steer what they do and say. The Allegiances page says what each
+  wants; the Clanmates page what each thinks of you.
+- **Your place** (in part): talk to your clanmates (or other Clans' cats) and they grow fond of you. On the **Clanmates** page, a clanmate who's
   close enough can become your mate once your cat is grown, and your kits wait there for you to name them.
 
 ## Building it

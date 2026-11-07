@@ -361,6 +361,18 @@ whether a non-binary cat can carry kits), and past a bond of 90, once your cat i
 -paw), offers to become mates; at 95 the cat may ask you. Your kits come the same way, and you name them on the page from
 names that fit their looks. The ceremonies at the speaking rock, a new leader, and deaths are still to come.
 
+**Minds, done (2026-11-07):** the rivals-and-motives plan's Part A (wcmods' `docs/plans/rivals-and-motives.md`,
+approved that day). Each cat remembers what happened to it and those close to it (an apprentice its mentor, a warrior
+passed over the deputy named instead, a cat in love the one who became another's mate), felt from where it stands:
+small things fade over the moons, big ones stay. From its memories, its liking, respect, fear and grudge for each
+cat, your cat too. Cats sharing tongues tell each other what they saw, and a cat that hears of something feels it
+from where it stands (a victim's kin hardest). Each cat wants one or two things at a time (to rise, to keep its kits
+safe, to prove itself, revenge, a cat's affection, to keep the Clan fed, to keep the peace), from its traits, rank and
+memories: the keen volunteer for patrols first, an avenger or a young cat out to prove itself practises fighting, a
+cat in love seeks out the one it loves, a parent keeps watch over its kits. What it says draws on what it feels about
+you, what it remembers and what it wants. The Allegiances page says what each cat wants; the Clanmates page what
+each cat thinks of you, and lists the cats of other Clans you've grown close to: a mate can come from any Clan.
+
 ### 7. Between the Clans
 
 - **Borders:** patrols of two Clans that meet at their border stop on their own sides and exchange words, tense or

@@ -21,6 +21,7 @@
 
 #include "clans.hpp"
 #include "life.hpp"
+#include "mind.hpp"
 
 namespace cl
 {
@@ -43,6 +44,8 @@ namespace cl
     {
         Clan clan;
         std::string text;
+        std::optional<Happened> what;   // what it was, for the cats' memories (mind.hpp)
+        int who = -1, whom = -1;
     };
 
     namespace moons_detail
@@ -105,7 +108,9 @@ namespace cl
                     if (c.clan == clan && c.rank == rank) ids.push_back(c.id);
                 return ids;
             };
-            auto say = [&](std::string text) { news.push_back({clan, std::move(text)}); };
+            auto say = [&](std::string text, std::optional<Happened> what = std::nullopt, int who = -1, int whom = -1) {
+                news.push_back({clan, std::move(text), what, who, whom});
+            };
             const auto mentoring = [&](int id) {
                 for (const Cat& c : cats)
                     if (c.mentor == id && (c.rank == Rank::Apprentice || c.rank == Rank::MedicineApprentice)) return true;
@@ -140,7 +145,7 @@ namespace cl
                 if (medicine) text += ", the medicine cat's apprentice.";
                 else if (mentor) text += std::format(". {} mentor is {}.", their(k, true), name(*mentor));
                 else text += ".";
-                say(text);
+                say(text, Happened::Apprenticed, k.id, k.mentor);   // (a mentor of -1: none free, nothing felt)
             }
             // apprentices named warriors
             for (int id : of(Rank::Apprentice))
@@ -152,7 +157,7 @@ namespace cl
                 a.rank = Rank::Warrior;
                 a.mentor = -1;
                 m.rename(a);
-                say(std::format("{} has earned {} warrior name: {}.", was, their(a), name(a)));
+                say(std::format("{} has earned {} warrior name: {}.", was, their(a), name(a)), Happened::Warrior, a.id);
             }
             // old cats join the elders
             for (Rank rank : {Rank::Warrior, Rank::Deputy, Rank::MedicineCat})
@@ -170,10 +175,10 @@ namespace cl
                         next->rank = Rank::MedicineCat;
                         next->mentor = -1;
                         m.rename(*next);
-                        say(std::format("{} is now the medicine cat, {}.", was, name(*next)));
+                        say(std::format("{} is now the medicine cat, {}.", was, name(*next)), Happened::Warrior, next->id);
                     }
                     c.rank = Rank::Elder;
-                    say(std::format("{} has joined the elders.", name(c)));
+                    say(std::format("{} has joined the elders.", name(c)), Happened::Elder, c.id);
                     if (rank == Rank::Deputy)
                     {
                         // a new deputy: the oldest warrior that's had an apprentice, else the oldest
@@ -187,7 +192,7 @@ namespace cl
                         if (best)
                         {
                             best->rank = Rank::Deputy;
-                            say(std::format("{} is the new deputy.", name(*best)));
+                            say(std::format("{} is the new deputy.", name(*best)), Happened::Deputy, best->id);
                         }
                     }
                 }
@@ -205,7 +210,7 @@ namespace cl
                     if (liking.of(a, b) < r.mates_liking || u(rng) >= r.mates_chance) continue;
                     a.mate = b.id;
                     b.mate = a.id;
-                    say(std::format("{} and {} have become mates.", name(a), name(b)));
+                    say(std::format("{} and {} have become mates.", name(a), name(b)), Happened::Mates, a.id, b.id);
                 }
             // queens: kits born, queens back to their duties, she-cats with mates to the nursery
             int clan_size = 0;
@@ -221,7 +226,7 @@ namespace cl
                     auto kits = m.litter(q, father, m.litter_size());
                     std::vector<std::string> names;
                     for (const Cat& k : kits) names.push_back(name(k));
-                    say(std::format("{}'s kits are born: {}.", name(q), moons_detail::list(names)));
+                    say(std::format("{}'s kits are born: {}.", name(q), moons_detail::list(names)), Happened::Kits, q.id, q.mate);
                     born.insert(born.end(), kits.begin(), kits.end());
                     continue;
                 }
@@ -269,7 +274,8 @@ namespace cl
                     c.rank = Rank::Queen;   // in the nursery with them
                     std::vector<std::string> names;
                     for (const Cat& k : kits) names.push_back(name(k));
-                    say(std::format("{} and {} have taken in kits found at the edge of the territory: {}.", name(c), name(*mate), moons_detail::list(names)));
+                    say(std::format("{} and {} have taken in kits found at the edge of the territory: {}.", name(c), name(*mate), moons_detail::list(names)),
+                        Happened::Kits, c.id, mate->id);
                     taken_in.insert(taken_in.end(), kits.begin(), kits.end());
                 }
             }

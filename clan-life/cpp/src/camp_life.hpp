@@ -50,9 +50,14 @@ namespace clw::life
         std::mt19937 rng{20261107};
         std::optional<cl::DayPart> part;
         double now = 0;
+        // the days as this counts them: from the Clans' own, one more each time the clock goes past midnight (so the
+        // time never runs back while the Clans' count catches up)
+        int days = 0;
+        std::optional<double> last_clock;
         std::optional<Clan> camp;          // the camp whose cats are in the world
         int cap = 30;                     // at most this many in the world
         bool found_camps = false;         // all four
+        cl::WantsById wants;              // what each cat wants (mind.hpp), worked out each day
         double look_again = 0;            // real seconds before looking for the camps again
     };
     inline auto state() -> State&
@@ -131,6 +136,9 @@ namespace clw::life
         // friends grow fonder sharing tongues, training and patrolling together: 1.5 an hour, half from each side
         if (l.act.with >= 0 && hours > 0)
             if (const Cat* other = by_id(w, l.act.with)) w.liking.add(c, *other, 0.75 * hours);
+        // cats sharing tongues tell each other what they know
+        if (l.act.doing == Doing::SharingTongues && hours >= 0.5)
+            if (const Cat* other = by_id(w, l.act.with)) cl::gossip(w.minds, c, *other, w.moons, w.cats, w.liking);
         const bool was_hunting = l.act.doing == Doing::Hunting;
         auto& given = s.orders[c.clan].given;
         if (auto it = given.find(c.id); it != given.end())
@@ -138,7 +146,12 @@ namespace clw::life
             l.act = it->second;
             given.erase(it);
         }
-        else l.act = cl::choose(c, l.needs, s.part.value_or(cl::DayPart::Sunhigh), others_of(w, c.clan), w.liking, s.rng);
+        else
+        {
+            auto wanted = s.wants.find(c.id);
+            l.act = cl::choose(c, l.needs, s.part.value_or(cl::DayPart::Sunhigh), others_of(w, c.clan), w.liking, s.rng,
+                               wanted == s.wants.end() ? std::vector<cl::WantOf>{} : wanted->second);
+        }
         l.since = s.now;
         l.until = s.now + l.act.hours;
         // most sleep in their den; some (the elders always) curled up outside it
@@ -163,7 +176,7 @@ namespace clw::life
                     clan_cats.push_back(&c);
                     needs[c.id] = s.cats[c.id].needs;
                 }
-            s.orders[clan] = cl::orders_for(clan_cats, *s.part, needs, s.rng);
+            s.orders[clan] = cl::orders_for(clan_cats, *s.part, needs, s.rng, s.wants);
         }
         const bool everyone = *s.part == cl::DayPart::Night || *s.part == cl::DayPart::Dawn;
         for (Cat& c : w.cats)
@@ -275,6 +288,7 @@ namespace clw::life
         case Doing::Resting: n.pose(std::uniform_real_distribution<double>(0, 1)(state().rng) < 0.5 ? Pose::Sit : Pose::Sleep); break;
         case Doing::Wandering: n.pose(Pose::Stand); break;
         case Doing::Watching: n.pose(Pose::Sit); break;
+        case Doing::WatchingKits: n.pose(Pose::Sit); break;
         }
         label(w, c, l);
     }
@@ -444,7 +458,10 @@ namespace clw::life
             s.look_again = 10;   // (the piles are found through every object)
         }
         if (camps().empty()) return;
-        s.now = w.days * 24.0 + *clock / 3600.0;
+        if (!s.last_clock) s.days = w.days;
+        else if (*clock < *s.last_clock - 43200) ++s.days;
+        s.last_clock = *clock;
+        s.now = s.days * 24.0 + *clock / 3600.0;
         if (cl::DayPart p = to_part(*part); p != s.part)
         {
             const bool first = !s.part;
@@ -478,6 +495,15 @@ namespace clw::life
             l.beat -= real_seconds;
             if (l.beat <= 0) beat(w, c, l);
         }
+    }
+
+    // What each cat wants now, worked out again (each day, and as the Clans come in).
+    inline auto rethink(const World& w) -> void
+    {
+        State& s = state();
+        s.wants.clear();
+        for (const Cat& c : w.cats)
+            if (auto wants = cl::wants_of(c, w.minds, w.cats, w.liking, w.moons); !wants.empty()) s.wants[c.id] = std::move(wants);
     }
 
     // Every cat drawn again as it comes back in (a moon changed their ranks, names and sizes; kits were born): their days

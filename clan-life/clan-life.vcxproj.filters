@@ -37,6 +37,9 @@
     <ClInclude Include="cpp\src\life.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="cpp\src\mind.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="cpp\src\you_game.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

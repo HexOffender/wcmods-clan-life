@@ -103,6 +103,7 @@ namespace
         {
             if (!wcmods::on_game_thread_now()) return;
             if (now != "on") clw::life::stop();
+            else if (s.world) clw::life::rethink(*s.world);   // (what each wants, again after a stop)
             apply_day(now == "on");
         }
     }
@@ -124,6 +125,7 @@ namespace
         s.world = std::move(w);
         s.slot = slot;
         clw::life::current() = &*s.world;
+        clw::life::rethink(*s.world);
         wcmods::share("days", static_cast<double>(s.world->days));
         wcmods::share("moons", static_cast<double>(s.world->moons));
         wcmods::share("cats", static_cast<double>(s.world->cats.size()));
@@ -197,6 +199,15 @@ namespace
         clw::World& w = *s.world;
         static std::mt19937 rng(static_cast<uint32_t>(w.seed) ^ 0x6d6f6f6eu);
         auto news = cl::moon_passes(w.cats, clw::game().tables, w.liking, rng, {}, clw::you::your_cat(w));
+        // what happened, remembered by the Clan it happened in (its ceremonies are in front of everyone)
+        for (const cl::MoonNews& n : news)
+            if (n.what)
+            {
+                std::vector<int> clan;
+                for (const cl::Cat& c : w.cats)
+                    if (c.clan == n.clan) clan.push_back(c.id);
+                cl::happened(w.minds, *n.what, n.who, n.whom, w.moons + 1, clan, w.cats, w.liking);
+            }
         for (std::string& n : clw::you::moon(w, rng)) news.push_back({w.yours, std::move(n)});
         ++w.moons;
         const auto near_camp = clw::life::state().camp;
@@ -220,6 +231,7 @@ namespace
         if (s.state != "on" || !s.world) return;
         ++s.world->days;
         if (s.world->days % days_per_moon() == 0) moon();
+        clw::life::rethink(*s.world);
         clw::save(*s.world);
         wcmods::share("days", static_cast<double>(s.world->days));
     }
@@ -233,9 +245,9 @@ namespace
         clw::life::tick(*s.world, 0.5);
         if (std::wstring asked = clw::you::tick(*s.world, 0.5); !asked.empty()) banners().push_back(asked);
         wcmods::share("life", clw::life::snapshot(*s.world));
-        // the days and liking kept every few minutes too
+        // the days, liking and memories kept every ten minutes too (and each day, and as you leave the world)
         static int ticks = 0;
-        if (++ticks % 240 == 0) clw::save(*s.world);
+        if (++ticks % 1200 == 0) clw::save(*s.world);
     }
 
     auto page(wcmods::Ui& ui) -> void

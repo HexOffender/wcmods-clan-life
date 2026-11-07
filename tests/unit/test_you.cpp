@@ -65,7 +65,7 @@ static void mates_by_age_and_bond_only()
     CHECK(!cl::could_be_mates(y, cats[4], Clan::ThunderClan, Rank::Warrior));   // an apprentice: too young
     CHECK(!cl::could_be_mates(y, cats[5], Clan::ThunderClan, Rank::Warrior));   // a kit
     CHECK(!cl::could_be_mates(y, cats[0], Clan::ThunderClan, Rank::Apprentice)); // your cat too young
-    CHECK(!cl::could_be_mates(y, cats[0], Clan::RiverClan, Rank::Warrior));      // another Clan's
+    CHECK(cl::could_be_mates(y, cats[0], Clan::RiverClan, Rank::Warrior));       // another Clan's: frowned on, not forbidden
     cats[0].mother = cl::your_id;                                                   // your own kit
     CHECK(!cl::could_be_mates(y, cats[0], Clan::ThunderClan, Rank::Warrior));
     // the one that likes you most past 95 asks

@@ -20,6 +20,7 @@
 #include "clans.hpp"
 #include "describe.hpp"
 #include "life.hpp"
+#include "mind.hpp"
 #include "you.hpp"
 
 namespace clw
@@ -41,6 +42,7 @@ namespace clw
         int moons = 0;              // moons gone by (step 6: a moon every so many days, a setting)
         std::vector<std::pair<std::string, std::string>> news;   // the moons' news, oldest first: (Clan, words)
         cl::You you;                // your cat's bonds, mate and kits (you.hpp)
+        cl::Minds minds;            // each cat's memories (mind.hpp)
         cl::Liking liking;          // how the cats' liking for each other has moved
     };
 
@@ -312,6 +314,16 @@ namespace clw
         w.you.expecting = static_cast<int>(y["expecting"].number(0));
         w.you.asked_by = static_cast<int>(y["asked_by"].number(-1));
         w.you.newest_kit = static_cast<int>(y["newest_kit"].number(0));
+        // memories: [what, who, whom, moon, toward, liking, respect, fear, grudge, told], by cat id
+        const wcmods::Json& minds = rec["minds"];
+        for (size_t i = 0; i < minds.keys().size(); ++i)
+            for (const wcmods::Json& m : minds.values()[i].values())
+                if (m.size() == 10)
+                    w.minds.of[std::stoi(minds.keys()[i])].push_back({static_cast<cl::Happened>(static_cast<int>(m[0].number(0))),
+                                                         static_cast<int>(m[1].number(-1)), static_cast<int>(m[2].number(-1)),
+                                                         static_cast<int>(m[3].number(0)), static_cast<int>(m[4].number(-1)),
+                                                         m[5].number(0), m[6].number(0), m[7].number(0), m[8].number(0),
+                                                         m[9].boolean(false)});
         for (const wcmods::Json& k : y["to_name"].values()) w.you.to_name.push_back(static_cast<int>(k.number(0)));
         if (y["cat"].is_object()) w.you.cat = from_json(t, y["cat"]);
         for (const wcmods::Json& l : rec["liking"].values())
@@ -373,6 +385,22 @@ namespace clw
         you.set("newest_kit", Json(w.you.newest_kit));
         if (w.you.cat) you.set("cat", to_json(t, *w.you.cat));
         rec.set("you", you);
+        Json minds = Json::object();
+        for (auto& [id, list] : w.minds.of)
+        {
+            Json l = Json::array();
+            for (const cl::Memory& m : list)
+            {
+                Json x = Json::array();
+                for (double v : {static_cast<double>(static_cast<int>(m.what)), static_cast<double>(m.who), static_cast<double>(m.whom),
+                                 static_cast<double>(m.moon), static_cast<double>(m.toward), m.liking, m.respect, m.fear, m.grudge})
+                    x.push(Json(v));
+                x.push(Json(m.told));
+                l.push(x);
+            }
+            minds.set(std::to_string(id), l);
+        }
+        rec.set("minds", minds);
         Json liking = Json::array();
         for (auto& [pair, v] : w.liking.changed)
         {

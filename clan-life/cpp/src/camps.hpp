@@ -162,11 +162,13 @@ namespace clw
             c.rock = detail::on_mesh({leader.x + (c.centre.x - leader.x) / ld * 300, leader.y + (c.centre.y - leader.y) / ld * 300, leader.z});
             // sunning spots: the same few each time for a camp
             std::mt19937 rng(static_cast<uint32_t>(clan) * 7919u + 17u);
-            for (int i = 0; i < 6; ++i)
+            // (only where the navigation mesh is: a spot off it has no ground for a cat put there)
+            for (int i = 0; i < 24 && c.sun.size() < 6; ++i)
             {
                 std::uniform_real_distribution<double> a(0, 6.283185307), r(0.3, 0.7);
                 const double ang = a(rng), rad = r(rng) * c.radius;
-                c.sun.push_back(detail::on_mesh({c.centre.x + std::cos(ang) * rad, c.centre.y + std::sin(ang) * rad, c.centre.z}));
+                if (auto at = wcmods::nav_point({c.centre.x + std::cos(ang) * rad, c.centre.y + std::sin(ang) * rad, c.centre.z}, nullptr, 400))
+                    c.sun.push_back(*at);
             }
             // and what you've recorded
             const wcmods::Json& mine = rec[std::string(cl::name(clan))];
@@ -246,6 +248,7 @@ namespace clw
         (void)rng;
         for (int tries = 0; tries < 8; ++tries)
             if (auto p = wcmods::random_nav_point(at, spread); p && std::abs(p->z - at.z) < 120) return *p;
-        return at;
+        // the spot itself where it's on the mesh, else the middle of the camp (which is)
+        return wcmods::nav_point(at, nullptr, 400).value_or(c.centre);
     }
 } // namespace clw

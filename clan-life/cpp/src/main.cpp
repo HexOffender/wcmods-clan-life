@@ -29,7 +29,9 @@
 #include "camp_life.hpp"
 #include "clans.hpp"
 #include "describe.hpp"
+#include "moons.hpp"
 #include "places_page.hpp"
+#include "you_game.hpp"
 #include "world.hpp"
 
 namespace
@@ -47,6 +49,12 @@ namespace
         bool night_sky = true;
         int cats = 30;
     };
+    // How many days to a moon (1: each day by the clock is a moon, so a kit is apprenticed after six days).
+    auto days_per_moon() -> int
+    {
+        std::lock_guard lock(wcmods::settings_lock());
+        return static_cast<int>(std::clamp(wcmods::settings()["days_per_moon"].number(1), 1.0, 30.0));
+    }
     auto day_settings() -> DaySettings
     {
         std::lock_guard lock(wcmods::settings_lock());
@@ -117,6 +125,7 @@ namespace
         s.slot = slot;
         clw::life::current() = &*s.world;
         wcmods::share("days", static_cast<double>(s.world->days));
+        wcmods::share("moons", static_cast<double>(s.world->moons));
         wcmods::share("cats", static_cast<double>(s.world->cats.size()));
         wcmods::share("made", s.world->made_now);
         wcmods::share("slot", static_cast<double>(slot));
@@ -167,12 +176,50 @@ namespace
         set_state("on");
     }
 
-    // A new day by the clock: counted and kept.
+    // The moons' news for your Clan and the camp your cat is in, one banner at a time.
+    auto banners() -> std::vector<std::wstring>&
+    {
+        static std::vector<std::wstring> waiting;
+        return waiting;
+    }
+    auto show_news() -> void
+    {
+        auto& waiting = banners();
+        if (waiting.empty()) return;
+        if (wcmods::hud_banner(wcmods::Banner::Begin, {.kind = L"Clan life", .title = L"A new moon", .text = waiting.front(), .seconds = 5}))
+            waiting.erase(waiting.begin());
+    }
+
+    // A moon passes: the Clans grow up (moons.hpp), the news kept and shown, the cats drawn again.
+    auto moon() -> void
+    {
+        State& s = state();
+        clw::World& w = *s.world;
+        static std::mt19937 rng(static_cast<uint32_t>(w.seed) ^ 0x6d6f6f6eu);
+        auto news = cl::moon_passes(w.cats, clw::game().tables, w.liking, rng, {}, clw::you::your_cat(w));
+        for (std::string& n : clw::you::moon(w, rng)) news.push_back({w.yours, std::move(n)});
+        ++w.moons;
+        const auto near_camp = clw::life::state().camp;
+        for (const cl::MoonNews& n : news)
+        {
+            w.news.push_back({std::string(cl::name(n.clan)), n.text});
+            if (n.clan == w.yours || (near_camp && n.clan == *near_camp)) banners().push_back(wcmods::wide(n.text));
+        }
+        if (!w.you.to_name.empty()) banners().push_back(L"Your kits are waiting for their names: the Clanmates page.");
+        if (w.news.size() > 80) w.news.erase(w.news.begin(), w.news.begin() + static_cast<long>(w.news.size() - 80));
+        wcmods::log(L"a moon has passed ({}): {} pieces of news", w.moons, news.size());
+        wcmods::share("moons", static_cast<double>(w.moons));
+        wcmods::share("cats", static_cast<double>(w.cats.size()));
+        clw::life::respawn();
+    }
+
+    // A new day by the clock: counted, a moon now and then, kept.
     auto new_day() -> void
     {
         State& s = state();
         if (s.state != "on" || !s.world) return;
         ++s.world->days;
+        if (s.world->days % days_per_moon() == 0) moon();
         clw::save(*s.world);
         wcmods::share("days", static_cast<double>(s.world->days));
     }
@@ -184,6 +231,7 @@ namespace
         const DaySettings d = day_settings();
         if (const auto& a = applied(); !a || a->minutes != d.minutes || a->night_sky != d.night_sky || a->cats != d.cats) apply_day(true);
         clw::life::tick(*s.world, 0.5);
+        if (std::wstring asked = clw::you::tick(*s.world, 0.5); !asked.empty()) banners().push_back(asked);
         wcmods::share("life", clw::life::snapshot(*s.world));
         // the days and liking kept every few minutes too
         static int ticks = 0;
@@ -207,10 +255,19 @@ class ClanLife : public wcmods::ModBase
         wcmods::share("state", state().state);
         wcmods::every(0.25, update);
         wcmods::every(0.5, live);
+        wcmods::every(5.5, show_news);
         wcmods::on_new_day(new_day);
         wcmods::settings_page(false);
         wcmods::menu_page(L"Allegiances", page);
         wcmods::menu_page(L"Camp places", clw::places_page::page);
+        wcmods::menu_page(L"Clanmates", [](wcmods::Ui& ui) {
+            State& s = state();
+            clw::you::page(ui, s.state == "on" && s.world ? &*s.world : nullptr);
+        });
+        wcmods::on_npc_interact([](wcmods::Npc n) {
+            State& s = state();
+            if (s.state == "on" && s.world) clw::you::talk_to(*s.world, n);
+        });
     }
 };
 

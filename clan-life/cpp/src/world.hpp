@@ -20,6 +20,7 @@
 #include "clans.hpp"
 #include "describe.hpp"
 #include "life.hpp"
+#include "you.hpp"
 
 namespace clw
 {
@@ -37,6 +38,9 @@ namespace clw
         std::wstring made;          // when, as text
         bool made_now = false;      // made this time (not read back)
         int days = 0;               // days gone by since they were made (step 3: the clock's days)
+        int moons = 0;              // moons gone by (step 6: a moon every so many days, a setting)
+        std::vector<std::pair<std::string, std::string>> news;   // the moons' news, oldest first: (Clan, words)
+        cl::You you;                // your cat's bonds, mate and kits (you.hpp)
         cl::Liking liking;          // how the cats' liking for each other has moved
     };
 
@@ -185,6 +189,7 @@ namespace clw
         j.set("suffix", Json(c.suffix >= 0 ? t.suffixes[static_cast<size_t>(c.suffix)].id : std::string()));
         j.set("name", Json(cl::full_name(t, c)));
         j.set("she", Json(c.she));
+        j.set("gender", Json(std::string(cl::gender_name(c.gender))));
         j.set("moons", Json(c.moons));
         j.set("grown", Json(c.grown));
         for (auto [key, v] : {std::pair{"mother", c.mother}, std::pair{"father", c.father}, std::pair{"mate", c.mate}, std::pair{"mentor", c.mentor}})
@@ -193,6 +198,7 @@ namespace clw
         for (int tr : c.traits) traits.push(Json(tr));
         j.set("traits", traits);
         j.set("from_game", Json(c.from_game));
+        if (c.expecting > 0) j.set("expecting", Json(c.expecting));
         Json look = Json::object();
         const std::pair<const char*, int> parts[] = {
             {"body", c.look.body}, {"face", c.look.face}, {"ears", c.look.ears}, {"eyes", c.look.eyes}, {"tail", c.look.tail},
@@ -232,6 +238,7 @@ namespace clw
         c.prefix = prefix_index(t, wcmods::wide(j["prefix"].string()));
         c.suffix = suffix_index(t, wcmods::wide(j["suffix"].string()));
         c.she = j["she"].boolean(false);
+        c.gender = cl::gender_of(j["gender"].string()).value_or(c.she ? cl::Gender::SheCat : cl::Gender::Tom);
         c.moons = static_cast<int>(j["moons"].number(0));
         c.grown = j["grown"].number(0.5);
         c.mother = static_cast<int>(j["mother"].number(-1));
@@ -240,6 +247,7 @@ namespace clw
         c.mentor = static_cast<int>(j["mentor"].number(-1));
         c.traits = {static_cast<int>(j["traits"][0].number(0)), static_cast<int>(j["traits"][1].number(1))};
         c.from_game = j["from_game"].boolean(false);
+        c.expecting = static_cast<int>(j["expecting"].number(0));
         const wcmods::Json& l = j["look"];
         auto n = [&](const char* k) { return static_cast<int>(l[k].number(0)); };
         c.look = {.body = n("body"), .face = n("face"), .ears = n("ears"), .eyes = n("eyes"), .tail = n("tail"),
@@ -289,6 +297,23 @@ namespace clw
             if (auto c = from_json(t, j)) w.cats.push_back(*c);
         if (w.cats.empty()) return std::nullopt;
         w.days = static_cast<int>(rec["days"].number(0));
+        w.moons = static_cast<int>(rec["moons"].number(0));
+        for (const wcmods::Json& n : rec["news"].values())
+            if (n.size() == 2) w.news.push_back({n[0].string(), n[1].string()});
+        const wcmods::Json& y = rec["you"];
+        for (const wcmods::Json& b : y["bond"].values())
+            if (b.size() == 2) w.you.bond[static_cast<int>(b[0].number(0))] = b[1].number(0);
+        for (const wcmods::Json& b : y["talked"].values())
+            if (b.size() == 2) w.you.talked[static_cast<int>(b[0].number(0))] = static_cast<int>(b[1].number(0));
+        w.you.mate = static_cast<int>(y["mate"].number(-1));
+        if (auto g = cl::gender_of(y["gender"].string())) w.you.gender = *g;
+        w.you.trans = y["trans"].boolean(false);
+        if (y["carries"].is_bool()) w.you.carries = y["carries"].boolean(false);
+        w.you.expecting = static_cast<int>(y["expecting"].number(0));
+        w.you.asked_by = static_cast<int>(y["asked_by"].number(-1));
+        w.you.newest_kit = static_cast<int>(y["newest_kit"].number(0));
+        for (const wcmods::Json& k : y["to_name"].values()) w.you.to_name.push_back(static_cast<int>(k.number(0)));
+        if (y["cat"].is_object()) w.you.cat = from_json(t, y["cat"]);
         for (const wcmods::Json& l : rec["liking"].values())
             if (l.size() == 3) w.liking.changed[cl::Liking::key(static_cast<int>(l[0].number(0)), static_cast<int>(l[1].number(0)))] = l[2].number(0);
         return w;
@@ -309,6 +334,45 @@ namespace clw
         for (const Cat& c : w.cats) cats.push(to_json(t, c));
         rec.set("cats", cats);
         rec.set("days", Json(w.days));
+        rec.set("moons", Json(w.moons));
+        Json news = Json::array();
+        for (auto& [clan, words] : w.news)
+        {
+            Json n = Json::array();
+            n.push(Json(clan));
+            n.push(Json(words));
+            news.push(n);
+        }
+        rec.set("news", news);
+        Json you = Json::object();
+        Json bond = Json::array(), talked = Json::array(), to_name = Json::array();
+        for (auto& [id, v] : w.you.bond)
+        {
+            Json b = Json::array();
+            b.push(Json(id));
+            b.push(Json(std::round(v * 10) / 10));
+            bond.push(b);
+        }
+        for (auto& [id, day] : w.you.talked)
+        {
+            Json b = Json::array();
+            b.push(Json(id));
+            b.push(Json(day));
+            talked.push(b);
+        }
+        for (int k : w.you.to_name) to_name.push(Json(k));
+        you.set("bond", bond);
+        you.set("talked", talked);
+        you.set("to_name", to_name);
+        you.set("mate", Json(w.you.mate));
+        if (w.you.gender) you.set("gender", Json(std::string(cl::gender_name(*w.you.gender))));
+        you.set("trans", Json(w.you.trans));
+        if (w.you.carries) you.set("carries", Json(*w.you.carries));
+        you.set("expecting", Json(w.you.expecting));
+        you.set("asked_by", Json(w.you.asked_by));
+        you.set("newest_kit", Json(w.you.newest_kit));
+        if (w.you.cat) you.set("cat", to_json(t, *w.you.cat));
+        rec.set("you", you);
         Json liking = Json::array();
         for (auto& [pair, v] : w.liking.changed)
         {

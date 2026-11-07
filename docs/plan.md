@@ -345,6 +345,22 @@ become mates, and in time a she-cat moves to the nursery and kits are born there
 **Proof:** unit tests for ageing and who's next; in game at a fast clock, an apprentice ceremony and a warrior
 ceremony watched from start to end, the Allegiances page changed after.
 
+**Growing up, mates and kits, done (2026-11-07), with the owner's changes that day:** cats can be toms, she-cats or
+non-binary, and any of them trans (a cat's gender is apart from its body, which its genes follow and which decides
+whether it can carry kits), and a mate can be of any gender: the only bars are age and the bond (and close kin: a
+parent, a kit or a littermate). As each moon passes (a day by the clock, a setting) every cat is a moon older; kits of
+six moons are apprenticed with a mentor (now and then as the medicine cat's apprentice), apprentices are named warriors
+between twelve and eighteen moons, old cats join the elders (a new deputy follows a deputy; a medicine cat waits for its
+apprentice); two grown cats who like each other enough become mates; of two mates where one can carry kits and the other
+can't, the one who can moves to the nursery and two moons on the kits are born there with genes from both; two mates
+who can't have kits together now and then take in kits found at the edge of the territory. The news is kept (the
+Allegiances page's Clan news) and shown on the HUD for your Clan and the camp you're in. Your cat: a clanmate's bond with
+you grows as you talk to it (the game's Interact at its Talk prompt: its line in the talk box) and as you spend time
+near it; the mod menu's **Clanmates** page shows each bond, asks who your cat is (a tom, a she-cat, non-binary; trans;
+whether a non-binary cat can carry kits), and past a bond of 90, once your cat is grown (its name no longer a -kit or
+-paw), offers to become mates; at 95 the cat may ask you. Your kits come the same way, and you name them on the page from
+names that fit their looks. The ceremonies at the speaking rock, a new leader, and deaths are still to come.
+
 ### 7. Between the Clans
 
 - **Borders:** patrols of two Clans that meet at their border stop on their own sides and exchange words, tense or

@@ -48,6 +48,7 @@ int main()
     c.look.eye_colour = c.look.eye_colour2 = 0;
     CHECK(cl::description(c, coats, eyes) == "black tom with amber eyes");
     c.she = true;
+    c.gender = cl::Gender::SheCat;
     c.look.coat = 1;
     c.look.eye_colour2 = 1;
     CHECK(cl::description(c, coats, eyes) == "grey she-cat with one amber eye and one blue");
@@ -56,6 +57,15 @@ int main()
     CHECK(cl::description(c, coats, eyes) == "grey she-kit with amber eyes");
     c.look.coat = 7;   // a slot the colours haven't got: no coat word
     CHECK(cl::description(c, coats, eyes) == "she-kit with amber eyes");
+    // who a cat is, apart from its body: non-binary, trans
+    c.rank = cl::Rank::Warrior;
+    c.look.coat = 0;
+    c.gender = cl::Gender::NonBinary;
+    CHECK(cl::description(c, coats, eyes) == "black non-binary cat with amber eyes");
+    CHECK(cl::their(c) == "their" && !cl::trans(c));
+    c.gender = cl::Gender::Tom;   // its body a she-cat's
+    CHECK(cl::description(c, coats, eyes) == "black trans tom with amber eyes");
+    CHECK(cl::their(c, true) == "His" && cl::trans(c));
     std::printf("%d checks, %d failed\n", checks, failures);
     return failures ? 1 : 0;
 }

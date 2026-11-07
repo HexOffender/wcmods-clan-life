@@ -18,6 +18,7 @@ namespace clw::allegiances
 {
     inline auto name_of(const World& w, int id) -> std::wstring
     {
+        if (id == cl::your_id) return wcmods::cat_name(wcmods::player()) + L" (your cat)";
         const Cat* c = by_id(w, id);
         return c ? wcmods::wide(cl::full_name(game().tables, *c)) : std::wstring(L"?");
     }
@@ -54,6 +55,7 @@ namespace clw::allegiances
                     for (size_t i = 0; i < kits.size(); ++i) list += (i ? (i + 1 == kits.size() ? L" and " : L", ") : L"") + kits[i];
                     text += std::format(L"; mother of {}", list);
                 }
+                if (c.expecting > 0) text += L"; expecting kits";
                 if (c.mate >= 0) text += std::format(L" (mate: {})", name_of(w, c.mate));
             }
             return text;
@@ -69,6 +71,16 @@ namespace clw::allegiances
             out.push_back({heading, L""});
             for (const Cat* c : cats) out.push_back({L"", line(*c)});
         }
+        // kits of your cat's that no queen of the Clan is mother to (yours, or taken in with you)
+        std::vector<std::wstring> yours;
+        for (const Cat& k : w.cats)
+            if (k.clan == clan && k.rank == Rank::Kit && (k.mother == cl::your_id || (k.father == cl::your_id && !by_id(w, k.mother))))
+                yours.push_back(std::format(L"{}: {}", wcmods::wide(cl::full_name(game().tables, k)), words(k)));
+        if (!yours.empty())
+        {
+            out.push_back({L"Your kits", L""});
+            for (auto& line_ : yours) out.push_back({L"", line_});
+        }
         return out;
     }
 
@@ -81,8 +93,15 @@ namespace clw::allegiances
             ui.note(L"The Clans are made when you play a Sandbox mode cat in the forest.");
             return;
         }
-        ui.note(std::format(L"The four Clans of {}'s game (save slot {}), made {}. Your cat's Clan is {}.", w->cat, w->slot,
-                            w->made, wcmods::wide(cl::name(w->yours))));
+        ui.note(std::format(L"The four Clans of {}'s game (save slot {}), made {}. Your cat's Clan is {}. {} moons have passed.",
+                            w->cat, w->slot, w->made, wcmods::wide(cl::name(w->yours)), w->moons));
+        // the latest news, newest first
+        if (!w->news.empty())
+            ui.section(L"Clan news", [w](wcmods::Ui& ui) {
+                int shown = 0;
+                for (auto it = w->news.rbegin(); it != w->news.rend() && shown < 25; ++it, ++shown)
+                    ui.note(std::format(L"{}: {}", wcmods::wide(it->first), wcmods::wide(it->second)));
+            }, false);
         std::vector<Clan> order{w->yours};
         for (Clan c : cl::clans)
             if (c != w->yours) order.push_back(c);

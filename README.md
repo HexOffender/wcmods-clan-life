@@ -20,6 +20,12 @@ own tests. There's nothing to install yet. So far:
   their mentors, cats sharing tongues and lying in the sun, elders telling stories to kits, everyone to their dens at
   night with a guard at the entrance. Each has a label with its name, rank and what it's doing. The **Camp places**
   page moves a camp's fresh-kill pile, speaking rock or entrance to where you stand.
+- **Growing up, mates and kits** (step 6, in part): a moon passes each day by the clock (a setting). Kits are
+  apprenticed and apprentices named warriors, old cats join the elders, cats who like each other become mates (any
+  genders: cats are toms, she-cats or non-binary, and can be trans), and kits are born in the nursery with genes from
+  both parents, or taken in. The news shows on the HUD and on the Allegiances page.
+- **Your place** (in part): talk to your clanmates and they grow fond of you. On the **Clanmates** page, a clanmate who's
+  close enough can become your mate once your cat is grown, and your kits wait there for you to name them.
 
 ## Building it
 

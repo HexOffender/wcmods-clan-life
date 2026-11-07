@@ -18,6 +18,7 @@
 #include "camp_life.hpp"
 #include "clans.hpp"
 #include "life.hpp"
+#include "moons.hpp"
 #include "party.hpp"
 #include "world.hpp"
 #include "you.hpp"
@@ -211,6 +212,8 @@ namespace clw::you
         std::wstring words = line_for(w, *c, life::state().cats[c->id], bond, yours);
         if (cl::could_be_mates(w.you, *c, w.yours, your_rank()))
             words += L" ...I've been thinking about us. If you'd have me as your mate, you only need to say so.";
+        if (w.standing.exiled >= 0 && yours) words = L"You're no Clanmate of mine. Get off our territory before I make you.";
+        else if (w.standing.punished_until > w.days && yours) words += L" Shouldn't you be seeing to the elders?";
         const std::wstring speaker = wcmods::wide(cl::full_name(game().tables, *c));
         wcmods::say(speaker, words);
         static int talks = 0;

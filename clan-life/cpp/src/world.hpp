@@ -21,6 +21,7 @@
 #include "describe.hpp"
 #include "life.hpp"
 #include "mind.hpp"
+#include "code.hpp"
 #include "you.hpp"
 
 namespace clw
@@ -44,6 +45,10 @@ namespace clw
         cl::You you;                // your cat's bonds, mate and kits (you.hpp)
         cl::Minds minds;            // each cat's memories (mind.hpp)
         cl::Liking liking;          // how the cats' liking for each other has moved
+        // the warrior code (Part E): your cat answering for its breaches, the breaches done, the Clans' regard
+        cl::Standing standing;
+        std::vector<cl::BreachDone> breaches;
+        cl::Regard regard;
     };
 
     inline auto clan_of(std::wstring_view name) -> std::optional<Clan>
@@ -328,6 +333,21 @@ namespace clw
         if (y["cat"].is_object()) w.you.cat = from_json(t, y["cat"]);
         for (const wcmods::Json& l : rec["liking"].values())
             if (l.size() == 3) w.liking.changed[cl::Liking::key(static_cast<int>(l[0].number(0)), static_cast<int>(l[1].number(0)))] = l[2].number(0);
+        // the warrior code: {exiled, punished_until, record [lesser, serious, severe], breaches [[who, whom, what, day,
+        // heard, judged, the victim's Clan, its name]...], regard [[clan, clan, value]...]}
+        const wcmods::Json& code = rec["code"];
+        w.standing.exiled = static_cast<int>(code["exiled"].number(-1));
+        w.standing.punished_until = static_cast<int>(code["punished_until"].number(-1));
+        if (const wcmods::Json& r = code["record"]; r.size() == 3)
+            w.standing.record = {static_cast<int>(r[0].number(0)), static_cast<int>(r[1].number(0)), static_cast<int>(r[2].number(0))};
+        for (const wcmods::Json& b : code["breaches"].values())
+            if (b.size() == 8)
+                w.breaches.push_back({static_cast<int>(b[0].number(-1)), static_cast<int>(b[1].number(-1)),
+                                      static_cast<cl::Breach>(static_cast<int>(b[2].number(0))), static_cast<int>(b[3].number(0)),
+                                      b[4].boolean(false), b[5].boolean(false), static_cast<Clan>(static_cast<int>(b[6].number(0))),
+                                      b[7].string()});
+        for (const wcmods::Json& r : code["regard"].values())
+            if (r.size() == 3) w.regard.of[{static_cast<int>(r[0].number(0)), static_cast<int>(r[1].number(0))}] = r[2].number(60);
         return w;
     }
 
@@ -411,6 +431,35 @@ namespace clw
             liking.push(l);
         }
         rec.set("liking", liking);
+        Json code = Json::object();
+        code.set("exiled", Json(w.standing.exiled));
+        code.set("punished_until", Json(w.standing.punished_until));
+        Json record = Json::array();
+        for (int n : {w.standing.record.lesser, w.standing.record.serious, w.standing.record.severe}) record.push(Json(n));
+        code.set("record", record);
+        Json breaches = Json::array();
+        for (const cl::BreachDone& b : w.breaches)
+        {
+            Json x = Json::array();
+            for (int n : {b.who, b.whom, static_cast<int>(b.what), b.day}) x.push(Json(n));
+            x.push(Json(b.heard));
+            x.push(Json(b.judged));
+            x.push(Json(static_cast<int>(b.clan)));
+            x.push(Json(b.name));
+            breaches.push(x);
+        }
+        code.set("breaches", breaches);
+        Json regard = Json::array();
+        for (auto& [pair, v] : w.regard.of)
+        {
+            Json x = Json::array();
+            x.push(Json(pair.first));
+            x.push(Json(pair.second));
+            x.push(Json(std::round(v * 10) / 10));
+            regard.push(x);
+        }
+        code.set("regard", regard);
+        rec.set("code", code);
         slots.set(std::to_string(w.slot), rec);
         all.set("version", Json(1));
         all.set("slots", slots);

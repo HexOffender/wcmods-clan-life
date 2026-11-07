@@ -249,7 +249,8 @@ namespace cl
                 if (clan_size >= r.most_cats) break;
                 Cat& c = *by_id(cats, id);
                 Cat* mate = by_id(cats, c.mate);
-                const bool just_left = std::find(left_nursery.begin(), left_nursery.end(), c.id) != left_nursery.end();
+                auto left = [&](int id) { return std::find(left_nursery.begin(), left_nursery.end(), id) != left_nursery.end(); };
+                const bool just_left = left(c.id) || (c.mate >= 0 && left(c.mate));
                 if (!mate || mate->clan != clan || mate->rank == Rank::Queen || c.moons < 20 || c.moons > 90 || just_left) continue;
                 if (mate->id < c.id && mate->rank == Rank::Warrior) continue;   // each pair once
                 if (has_young(c.id, mate->id)) continue;

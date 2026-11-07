@@ -311,6 +311,7 @@ namespace clw
         if (y["carries"].is_bool()) w.you.carries = y["carries"].boolean(false);
         w.you.expecting = static_cast<int>(y["expecting"].number(0));
         w.you.asked_by = static_cast<int>(y["asked_by"].number(-1));
+        w.you.newest_kit = static_cast<int>(y["newest_kit"].number(0));
         for (const wcmods::Json& k : y["to_name"].values()) w.you.to_name.push_back(static_cast<int>(k.number(0)));
         if (y["cat"].is_object()) w.you.cat = from_json(t, y["cat"]);
         for (const wcmods::Json& l : rec["liking"].values())
@@ -369,6 +370,7 @@ namespace clw
         if (w.you.carries) you.set("carries", Json(*w.you.carries));
         you.set("expecting", Json(w.you.expecting));
         you.set("asked_by", Json(w.you.asked_by));
+        you.set("newest_kit", Json(w.you.newest_kit));
         if (w.you.cat) you.set("cat", to_json(t, *w.you.cat));
         rec.set("you", you);
         Json liking = Json::array();

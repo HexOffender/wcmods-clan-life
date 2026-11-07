@@ -70,7 +70,9 @@ static void mates_by_age_and_bond_only()
     CHECK(!cl::could_be_mates(y, cats[0], Clan::ThunderClan, Rank::Warrior));
     // the one that likes you most past 95 asks
     y.bond[2] = 97;
-    CHECK(cl::who_asks(y, cats, Clan::ThunderClan, Rank::Warrior) == 2);
+    CHECK(cl::who_asks(y, cats, Clan::ThunderClan, Rank::Warrior, 1) == 2);
+    y.declined[2] = 1;   // "not now": not again for a few days
+    CHECK(cl::who_asks(y, cats, Clan::ThunderClan, Rank::Warrior, 2) != 2 && cl::who_asks(y, cats, Clan::ThunderClan, Rank::Warrior, 4) == 2);
     cl::become_mates(y, cats[1]);
     CHECK(y.mate == 2 && cats[1].mate == cl::your_id);
     CHECK(!cl::could_be_mates(y, cats[2], Clan::ThunderClan, Rank::Warrior));   // one mate at a time

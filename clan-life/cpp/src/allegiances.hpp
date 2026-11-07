@@ -71,6 +71,16 @@ namespace clw::allegiances
             out.push_back({heading, L""});
             for (const Cat* c : cats) out.push_back({L"", line(*c)});
         }
+        // kits of your cat's that no queen of the Clan is mother to (yours, or taken in with you)
+        std::vector<std::wstring> yours;
+        for (const Cat& k : w.cats)
+            if (k.clan == clan && k.rank == Rank::Kit && (k.mother == cl::your_id || (k.father == cl::your_id && !by_id(w, k.mother))))
+                yours.push_back(std::format(L"{}: {}", wcmods::wide(cl::full_name(game().tables, k)), words(k)));
+        if (!yours.empty())
+        {
+            out.push_back({L"Your kits", L""});
+            for (auto& line_ : yours) out.push_back({L"", line_});
+        }
         return out;
     }
 

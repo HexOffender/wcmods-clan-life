@@ -113,6 +113,7 @@ namespace clw::life
             const CatLife& l = s.cats[c.id];
             o.doing[c.id] = l.act.doing;
             if (!cl::away(l.act.doing) && l.act.doing != Doing::Sleeping) o.free.push_back(&c);
+            o.eating += l.act.doing == Doing::Eating;
             const bool fed_first = c.rank == Rank::Elder || c.rank == Rank::Queen || c.rank == Rank::Kit;
             if (fed_first && l.needs.hunger > 0.55 && l.act.doing != Doing::Eating) o.elders_fed = false;
         }
@@ -464,7 +465,16 @@ namespace clw::life
         for (Cat& c : w.cats)
         {
             CatLife& l = s.cats[c.id];
-            if (!l.npc || !l.npc->actor() || !l.there) continue;
+            if (!l.npc || !l.npc->actor()) continue;
+            // one fallen through the world (put where there was no ground after all): back to the middle of its camp
+            if (const Camp* camp = camp_of(c.clan))
+                if (auto at = l.npc->location(); at && at->z < camp->centre.z - 1500)
+                {
+                    l.npc->move_to(camp->centre);
+                    l.target = camp->centre;
+                    continue;
+                }
+            if (!l.there) continue;
             l.beat -= real_seconds;
             if (l.beat <= 0) beat(w, c, l);
         }

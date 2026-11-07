@@ -267,6 +267,7 @@ namespace cl
         std::vector<const Cat*> free;                 // in camp, not away, not asleep
         std::map<int, Doing> doing;                    // what each is doing now
         bool elders_fed = true;
+        int eating = 0;                                // at the pile now (a few at a time)
     };
     inline auto choose(const Cat& c, const Needs& n, DayPart part, const Others& others, const Liking& liking, std::mt19937& rng) -> Activity
     {
@@ -294,7 +295,9 @@ namespace cl
         };
         // hunger first: the elders, queens and kits eat first, the warriors once they've eaten
         const bool may_eat = kit || elder || queen || medicine || others.elders_fed;
-        if (n.hunger > 0.6 && may_eat && part != DayPart::Dawn) return {Doing::Eating, -1, 0.5};
+        // (sunhigh's the time to eat for a cat that's a little hungry)
+        const double eat_at = part == DayPart::Sunhigh || part == DayPart::Sundown ? 0.45 : 0.6;
+        if (n.hunger > eat_at && may_eat && part != DayPart::Dawn && others.eating < 4) return {Doing::Eating, -1, 0.5};
         if (n.tiredness > 0.75) return {r == Rank::Kit ? Doing::Sleeping : Doing::Resting, -1, hours(1, 2)};
         // the part of the day each rank keeps
         if (r == Rank::Leader && (part == DayPart::Dawn || part == DayPart::Sundown) && u(rng) < 0.6)
@@ -326,7 +329,8 @@ namespace cl
         };
         std::vector<Pull> pulls{
             {n.lonely, Doing::SharingTongues},
-            {n.comfort * (part == DayPart::Dawn ? 0.3 : 1.0), part == DayPart::Sunhigh || part == DayPart::Morning ? Doing::Sunning : Doing::Grooming},
+            {n.comfort * (part == DayPart::Dawn ? 0.3 : 1.0),
+             (part == DayPart::Sunhigh || part == DayPart::Morning) && u(rng) < 0.6 ? Doing::Sunning : Doing::Grooming},
             {young ? n.play : 0.0, Doing::Playing},
             {n.tiredness * 0.8, Doing::Resting},
             {0.2 + 0.1 * u(rng), Doing::Wandering},

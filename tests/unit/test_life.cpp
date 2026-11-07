@@ -155,6 +155,9 @@ static void who_eats_first()
     cl::Others fed = hungry_elders;
     fed.elders_fed = true;
     CHECK(cl::choose(warrior, starving, DayPart::Sundown, fed, liking, rng).doing == Doing::Eating);
+    // a few at the pile at a time: the rest wait
+    fed.eating = 4;
+    CHECK(cl::choose(warrior, starving, DayPart::Sundown, fed, liking, rng).doing != Doing::Eating);
 }
 
 static void friends_share_tongues()

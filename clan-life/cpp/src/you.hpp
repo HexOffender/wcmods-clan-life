@@ -30,6 +30,8 @@ namespace cl
         int expecting = 0;                     // moons before your kits are born (you the she-cat of the two)
         std::vector<int> to_name;              // your kits waiting for their names
         int asked_by = -1;                     // a clanmate who's asked to be your mate, waiting for your answer
+        std::map<int, int> declined;           // the day you said "not now" to each (it asks again a few days on)
+        int newest_kit = 0;                    // the newest of your kits put up for naming (each only once)
         std::optional<Cat> cat;                // your cat as a Cat: its look and genes (made once), for your kits
     };
 
@@ -85,11 +87,15 @@ namespace cl
         y.asked_by = -1;
     }
     // A clanmate that likes you this much asks you (one at a time).
-    inline auto who_asks(const You& y, const std::vector<Cat>& cats, Clan yours, Rank your_rank, const YouRules& r = {}) -> int
+    inline auto who_asks(const You& y, const std::vector<Cat>& cats, Clan yours, Rank your_rank, int day, const YouRules& r = {}) -> int
     {
         if (y.asked_by >= 0) return y.asked_by;
         for (const Cat& c : cats)
+        {
+            auto no = y.declined.find(c.id);
+            if (no != y.declined.end() && day - no->second < 3) continue;   // "not now": a few days on
             if (could_be_mates(y, c, yours, your_rank, r) && bond_of(y, c.id, r) >= r.asks_at) return c.id;
+        }
         return -1;
     }
 

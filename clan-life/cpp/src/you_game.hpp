@@ -45,8 +45,14 @@ namespace clw::you
         cl::You& y = w.you;
         if (y.cat)
         {
-            y.cat->she = cl::you_carry(y).value_or(y.cat->she);
             if (y.gender) y.cat->gender = *y.gender;
+            const bool carry = cl::you_carry(y).value_or(y.cat->she);
+            if (carry != y.cat->she)   // its body said since its genes were drawn: drawn again for it (two X or one)
+            {
+                y.cat->she = carry;
+                cl::Maker m(game().tables, w.seed ^ 0x796f75u);
+                y.cat->genes = m.genes_for_look(w.yours, y.cat->look, carry);
+            }
             return &*y.cat;
         }
         auto look = wcmods::look(wcmods::player());
@@ -125,11 +131,13 @@ namespace clw::you
         std::wstring words = line_for(w, *c, life::state().cats[c->id], bond, yours);
         if (yours && cl::could_be_mates(w.you, *c, w.yours, your_rank()))
             words += L" ...I've been thinking about us. If you'd have me as your mate, you only need to say so.";
-        wcmods::say(wcmods::wide(cl::full_name(game().tables, *c)), words);
+        const std::wstring speaker = wcmods::wide(cl::full_name(game().tables, *c));
+        wcmods::say(speaker, words);
         static int talks = 0;
         const int mine = ++talks;
-        wcmods::after(5, [mine] {
-            if (talks == mine) wcmods::hide_talk();
+        wcmods::after(5, [mine, speaker, words] {
+            // ours, still showing (not a talk of the game's or another mod's begun since)
+            if (talks == mine && !wcmods::talk_playing() && wcmods::talk_speaker() == speaker && wcmods::talk_line() == words) wcmods::hide_talk();
         });
         wcmods::share("bond_last", bond);
     }
@@ -149,7 +157,7 @@ namespace clw::you
             auto where = it->second.npc->location();
             if (where && std::hypot(where->x - at->x, where->y - at->y) < 500) cl::time_near(w.you, c.id, hours);
         }
-        const int asks = cl::who_asks(w.you, w.cats, w.yours, your_rank());
+        const int asks = cl::who_asks(w.you, w.cats, w.yours, your_rank(), w.days);
         if (asks >= 0 && w.you.asked_by != asks)
         {
             w.you.asked_by = asks;
@@ -198,11 +206,11 @@ namespace clw::you
             break;
         case cl::YourMoon::Nothing: break;
         }
-        // every kit of yours not named yet waits for its name
+        // each new kit of yours waits for its name, once
         for (const Cat& c : w.cats)
-            if (c.rank == Rank::Kit && c.moons <= 2 && (c.mother == your_id || c.father == your_id) &&
-                std::find(w.you.to_name.begin(), w.you.to_name.end(), c.id) == w.you.to_name.end())
+            if (c.rank == Rank::Kit && c.id > w.you.newest_kit && (c.mother == your_id || c.father == your_id))
                 w.you.to_name.push_back(c.id);
+        for (int id : w.you.to_name) w.you.newest_kit = std::max(w.you.newest_kit, id);
         return news;
     }
 
@@ -288,7 +296,11 @@ namespace clw::you
                 clw::save(*w);
                 return;
             }
-            if (ui.button(L"Not now")) y.asked_by = -1;
+            if (ui.button(L"Not now"))
+            {
+                y.declined[asker->id] = w->days;
+                y.asked_by = -1;
+            }
         }
         if (!cl::grown(rank)) ui.note(L"Apprentices don't take mates: once your cat is a warrior, a clanmate who's close enough can become its mate.");
         // the Clan

@@ -173,12 +173,8 @@ namespace clw
             if (auto v = detail::to_vec(mine["pile"])) c.pile = *v, c.recorded_pile = true;
             if (auto v = detail::to_vec(mine["rock"])) c.rock = *v, c.recorded_rock = true;
             if (auto v = detail::to_vec(mine["entrance"])) c.entrance = *v, c.recorded_entrance = true;
-            if (mine["sun"].is_array() && mine["sun"].size() > 0)
-            {
-                c.sun.clear();
-                for (const wcmods::Json& s : mine["sun"].values())
-                    if (auto v = detail::to_vec(s)) c.sun.push_back(*v);
-            }
+            for (const wcmods::Json& s : mine["sun"].values())   // added to the ones found
+                if (auto v = detail::to_vec(s)) c.sun.push_back(*v);
         }
         camps() = std::move(found);
         return true;

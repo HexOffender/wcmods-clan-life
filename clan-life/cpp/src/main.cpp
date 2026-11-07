@@ -67,10 +67,16 @@ namespace
         return s;
     }
 
-    // The day's sky and length while it's on, the game's own while it isn't.
+    // The day's sky and length while it's on, the game's own while it isn't (and again as the settings change).
+    auto applied() -> std::optional<DaySettings>&
+    {
+        static std::optional<DaySettings> a;
+        return a;
+    }
     auto apply_day(bool on) -> void
     {
         const DaySettings d = day_settings();
+        applied() = on ? std::optional<DaySettings>(d) : std::nullopt;
         wcmods::day_sky(on && d.night_sky);
         wcmods::set_day_length(on && d.minutes != 20 ? std::optional<double>(d.minutes * 60) : std::nullopt);
         clw::life::state().cap = d.cats;
@@ -81,6 +87,7 @@ namespace
         State& s = state();
         if (now == s.state) return;
         const bool was_on = s.state == "on";
+        if (was_on && s.world) clw::save(*s.world);   // the days and liking so far
         s.state = now;
         wcmods::share("state", now);
         wcmods::share("on", now == "on");
@@ -174,8 +181,13 @@ namespace
     {
         State& s = state();
         if (s.state != "on" || !s.world) return;
+        const DaySettings d = day_settings();
+        if (const auto& a = applied(); !a || a->minutes != d.minutes || a->night_sky != d.night_sky || a->cats != d.cats) apply_day(true);
         clw::life::tick(*s.world, 0.5);
         wcmods::share("life", clw::life::snapshot(*s.world));
+        // the days and liking kept every few minutes too
+        static int ticks = 0;
+        if (++ticks % 240 == 0) clw::save(*s.world);
     }
 
     auto page(wcmods::Ui& ui) -> void

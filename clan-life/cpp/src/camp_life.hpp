@@ -52,7 +52,8 @@ namespace clw::life
         double now = 0;
         std::optional<Clan> camp;          // the camp whose cats are in the world
         int cap = 30;                     // at most this many in the world
-        bool found_camps = false;
+        bool found_camps = false;         // all four
+        double look_again = 0;            // real seconds before looking for the camps again
     };
     inline auto state() -> State&
     {
@@ -126,9 +127,9 @@ namespace clw::life
         State& s = state();
         const double hours = std::clamp(s.now - l.since, 0.0, 12.0);
         l.needs = cl::needs_after(l.needs, l.act.doing, hours, c.rank);
-        // friends grow fonder sharing tongues, training and patrolling together
+        // friends grow fonder sharing tongues, training and patrolling together: 1.5 an hour, half from each side
         if (l.act.with >= 0 && hours > 0)
-            if (const Cat* other = by_id(w, l.act.with)) w.liking.add(c, *other, 1.5 * hours);
+            if (const Cat* other = by_id(w, l.act.with)) w.liking.add(c, *other, 0.75 * hours);
         const bool was_hunting = l.act.doing == Doing::Hunting;
         auto& given = s.orders[c.clan].given;
         if (auto it = given.find(c.id); it != given.end())
@@ -139,9 +140,10 @@ namespace clw::life
         else l.act = cl::choose(c, l.needs, s.part.value_or(cl::DayPart::Sunhigh), others_of(w, c.clan), w.liking, s.rng);
         l.since = s.now;
         l.until = s.now + l.act.hours;
-        l.bringing_prey = was_hunting && !cl::away(l.act.doing);
         // most sleep in their den; some (the elders always) curled up outside it
         l.in_den = l.act.doing == Doing::Sleeping && c.rank != Rank::Elder && std::uniform_real_distribution<double>(0, 1)(s.rng) < 0.65;
+        // a hunter home brings its prey to the pile (one going straight into its den left it there as data)
+        l.bringing_prey = was_hunting && shows(l);
         begin(w, c, l);
     }
 
@@ -433,8 +435,13 @@ namespace clw::life
         auto part = wcmods::day_part();
         const auto you = wcmods::location(wcmods::player());
         if (!clock || !part || !you) return;
-        if (!s.found_camps) s.found_camps = find_camps();
-        if (!s.found_camps) return;
+        if (!s.found_camps && (s.look_again -= real_seconds) <= 0)
+        {
+            find_camps();
+            s.found_camps = camps().size() == cl::clans.size();
+            s.look_again = 10;   // (the piles are found through every object)
+        }
+        if (camps().empty()) return;
         s.now = w.days * 24.0 + *clock / 3600.0;
         if (cl::DayPart p = to_part(*part); p != s.part)
         {
@@ -449,7 +456,8 @@ namespace clw::life
         {
             if (!lives(c)) continue;
             CatLife& l = s.cats[c.id];
-            if (s.now >= l.until || l.until - s.now > 30) decide(w, c, l);   // (30: the clock set back)
+            // its time up, or the clock set back past when it started
+            if (s.now >= l.until || s.now < l.since - 0.1) decide(w, c, l);
         }
         keep_in_world(w, *you);
         for (Cat& c : w.cats)
@@ -467,7 +475,9 @@ namespace clw::life
         State& s = state();
         for (auto& [_, l] : s.cats)
             if (l.npc) l.npc->remove();
+        const int cap = s.cap;   // a setting's
         s = State{};
+        s.cap = cap;
     }
 
     // For tests and the menu: what each cat in the near camp is doing, and how many are in the world.

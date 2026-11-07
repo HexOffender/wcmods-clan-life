@@ -282,6 +282,61 @@ static void mates_of_any_gender()
     }
 }
 
+static void a_death_and_its_places_filled()
+{
+    const cl::Tables t = tables();
+    auto cats = forest(t, 57);
+    std::mt19937 rng(57);
+    auto one = [&](Clan c, Rank r) -> Cat* {
+        for (Cat& x : cats)
+            if (x.clan == c && x.rank == r) return &x;
+        return nullptr;
+    };
+    auto count = [&](Clan c, Rank r) {
+        int n = 0;
+        for (const Cat& x : cats) n += x.clan == c && x.rank == r;
+        return n;
+    };
+    // the leader dies: the deputy leads, as a -star; a new deputy is named; its mate is free
+    Cat* leader = one(Clan::ThunderClan, Rank::Leader);
+    Cat* deputy = one(Clan::ThunderClan, Rank::Deputy);
+    CHECK(leader && deputy);
+    if (!leader || !deputy) return;
+    const int leader_id = leader->id, deputy_id = deputy->id, mate = leader->mate;
+    const size_t before = cats.size();
+    auto news = cl::death(cats, leader_id, t, rng);
+    CHECK(cats.size() == before - 1 && !by_id(cats, leader_id));
+    CHECK(by_id(cats, deputy_id)->rank == Rank::Leader && ends_with(cl::full_name(t, *by_id(cats, deputy_id)), "star"));
+    CHECK(count(Clan::ThunderClan, Rank::Leader) == 1 && count(Clan::ThunderClan, Rank::Deputy) == 1);
+    CHECK(has(news, "leads ThunderClan now") && has(news, "is the new deputy"));
+    if (mate >= 0 && by_id(cats, mate)) CHECK(by_id(cats, mate)->mate == -1);
+    // the medicine cat dies with an apprentice: the apprentice takes its place
+    Cat* med = one(Clan::RiverClan, Rank::MedicineCat);
+    Cat* app = one(Clan::RiverClan, Rank::MedicineApprentice);
+    if (med && app)
+    {
+        const int app_id = app->id;
+        news = cl::death(cats, med->id, t, rng);
+        CHECK(by_id(cats, app_id)->rank == Rank::MedicineCat && has(news, "is now the medicine cat"));
+    }
+    // a mentor dies: its apprentice gets another
+    for (Cat& a : cats)
+        if (a.clan == Clan::WindClan && a.rank == Rank::Apprentice && a.mentor >= 0)
+        {
+            const int a_id = a.id, old = a.mentor;
+            cl::death(cats, old, t, rng);
+            const Cat* now = by_id(cats, a_id);
+            CHECK(now->mentor != old && (now->mentor == -1 || by_id(cats, now->mentor)));
+            break;
+        }
+    // nobody's mate or mentor is a cat that's gone
+    for (const Cat& c : cats)
+    {
+        CHECK(c.mate < 0 || by_id(cats, c.mate));
+        CHECK(c.mentor < 0 || by_id(cats, c.mentor));
+    }
+}
+
 static void a_kit_whose_name_is_taken()
 {
     // its -paw name already another cat's: it's an apprentice called -paw all the same
@@ -312,6 +367,7 @@ static void a_kit_whose_name_is_taken()
 int main()
 {
     mates_of_any_gender();
+    a_death_and_its_places_filled();
     a_kit_whose_name_is_taken();
     kits_grow_up();
     mates_queens_and_kits();

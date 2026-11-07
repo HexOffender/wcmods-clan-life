@@ -29,6 +29,7 @@
 #include "camp_life.hpp"
 #include "clans.hpp"
 #include "describe.hpp"
+#include "fights.hpp"
 #include "moons.hpp"
 #include "places_page.hpp"
 #include "you_game.hpp"
@@ -242,6 +243,7 @@ namespace
         if (s.state != "on" || !s.world) return;
         const DaySettings d = day_settings();
         if (const auto& a = applied(); !a || a->minutes != d.minutes || a->night_sky != d.night_sky || a->cats != d.cats) apply_day(true);
+        for (std::wstring& line : clw::fights::tick(*s.world)) banners().push_back(std::move(line));
         clw::life::tick(*s.world, 0.5);
         if (std::wstring asked = clw::you::tick(*s.world, 0.5); !asked.empty()) banners().push_back(asked);
         wcmods::share("life", clw::life::snapshot(*s.world));

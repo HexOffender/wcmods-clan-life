@@ -147,8 +147,10 @@ recording page in the mod menu: stand there, press a button, and the spot is sav
 
 - **Sandbox mode:** Clan life follows it as Real-time combat does: it's on while you play a Sandbox mode cat, and
   your Clan is the one Sandbox mode says.
-- **Real-time combat:** the mod's cats aren't animals, so lock-on and hits leave them alone. Step 8 lets clanmates
-  fight beside you, through a small addition to Real-time combat.
+- **Real-time combat:** the mod tags its cats (`ClanLife.cat`, their Clan, rank, id and name), and Real-time combat
+  fights them as cats when your cat strikes one: they yield when beaten, and you spare them or kill them. Clan life
+  hears of each fight through Real-time combat's shared `RealtimeCombat.cat_events` and leaves the cats in a fight be
+  (wcmods' rivals-and-motives plan, part B). Step 8 lets clanmates fight beside you.
 - **Clan Mod Studio's characters and questlines:** their cats keep their spots; Clan life's cats keep clear of them.
 
 ## Part 1: the SDK (wcmods)
@@ -431,6 +433,5 @@ after the SDK steps it uses (2 after S3 and S4, 3 after S1, 4 after S2, 5 after 
 
 ## Not in this plan
 
-Swimming (RiverClan can't swim in the game), fights between Clans' cats (the game's fights only pit cats against
-animals and rogues; a border skirmish would need cat fighters in Real-time combat), seasons and weather (the game
+Swimming (RiverClan can't swim in the game), seasons and weather (the game
 has neither), StarClan and dreams, voice for the mod's lines.

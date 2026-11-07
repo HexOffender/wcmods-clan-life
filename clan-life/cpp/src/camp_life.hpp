@@ -15,6 +15,7 @@
 #include <map>
 #include <optional>
 #include <random>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -36,6 +37,7 @@ namespace clw::life
         double since = 0, until = 0;      // game hours (days * 24 + the clock)
         std::optional<Npc> npc;
         bool in_den = false;              // asleep inside its den (out of the world), not curled up outside it
+        bool held = false;                // in a fight with your cat, or down (Real-time combat's: left be)
         bool there = false;               // arrived where it does it
         bool bringing_prey = false;       // a hunter coming home: to the pile first
         Vec3 target{};
@@ -196,6 +198,12 @@ namespace clw::life
         spec.at = at;
         spec.asleep = true;
         spec.freeze_beyond = 8000;   // the whole camp moves, not only what's within the game's 23 m
+        // for other mods (Real-time combat fights them as cats): which cat, its Clan, rank and name
+        std::wstring rank = wcmods::wide(cl::name(c.rank));
+        for (auto& ch : rank)
+            if (ch == L' ') ch = L'_';
+        spec.tags = {L"ClanLife.cat", L"ClanLife." + wcmods::wide(cl::name(c.clan)), L"ClanLife.rank." + rank,
+                     L"ClanLife.id." + std::to_wstring(c.id), L"ClanLife.name." + wcmods::wide(cl::full_name(t, c))};
         spec.size = l.size;
         if (c.prefix >= 0) spec.prefix = wcmods::wide(t.prefixes[static_cast<size_t>(c.prefix)].id);
         if (c.suffix >= 0) spec.suffix = wcmods::wide(t.suffixes[static_cast<size_t>(c.suffix)].id);
@@ -366,7 +374,7 @@ namespace clw::life
     {
         State& s = state();
         l.there = false;
-        if (!l.npc || s.camp != c.clan) return;
+        if (!l.npc || s.camp != c.clan || l.held) return;
         Npc& n = *l.npc;
         l.target = place_for(c, l);
         label(w, c, l);
@@ -416,7 +424,7 @@ namespace clw::life
         {
             if (c.clan != *now || !lives(c)) continue;
             CatLife& l = s.cats[c.id];
-            if (!shows(l) || in_world >= s.cap) continue;
+            if (!shows(l) || in_world >= s.cap || l.held) continue;
             if (!l.npc)
             {
                 l.target = place_for(c, l);
@@ -471,10 +479,31 @@ namespace clw::life
                 for (Cat& c : w.cats)
                     if (lives(c)) s.cats[c.id].since = s.now;
         }
+        // Real-time combat's cats in a fight or down: left be; one let go chooses again
+        {
+            const wcmods::Json fighting = wcmods::shared("RealtimeCombat.fighting");
+            std::set<std::wstring> names;
+            for (const wcmods::Json& n : fighting.values()) names.insert(wcmods::wide(n.string()));
+            for (auto& [id, l] : s.cats)
+            {
+                RC::Unreal::UObject* a = l.npc ? l.npc->actor() : nullptr;
+                const bool held = a && names.contains(wcmods::name(a));
+                if (l.held && !held) l.until = s.now;
+                if (held && !l.held && l.npc)
+                {
+                    l.npc->stop();
+                    if (const Cat* c = by_id(w, id))
+                        l.npc->set_label({.name = wcmods::wide(cl::full_name(game().tables, *c)), .title = rank_title(c->rank),
+                                          .extra = L"In a fight", .range = 700});
+                }
+                l.held = held;
+            }
+        }
         for (Cat& c : w.cats)
         {
             if (!lives(c)) continue;
             CatLife& l = s.cats[c.id];
+            if (l.held) continue;
             // its time up, or the clock set back past when it started
             if (s.now >= l.until || s.now < l.since - 0.1) decide(w, c, l);
         }
@@ -482,7 +511,7 @@ namespace clw::life
         for (Cat& c : w.cats)
         {
             CatLife& l = s.cats[c.id];
-            if (!l.npc || !l.npc->actor()) continue;
+            if (!l.npc || !l.npc->actor() || l.held) continue;
             // one fallen through the world (put where there was no ground after all): back to the middle of its camp
             if (const Camp* camp = camp_of(c.clan))
                 if (auto at = l.npc->location(); at && at->z < camp->centre.z - 1500)
@@ -495,6 +524,22 @@ namespace clw::life
             l.beat -= real_seconds;
             if (l.beat <= 0) beat(w, c, l);
         }
+    }
+
+    // A cat killed: its body left where it fell a while, then gone; its day with it.
+    inline auto bury(int id) -> void
+    {
+        State& s = state();
+        auto it = s.cats.find(id);
+        if (it == s.cats.end()) return;
+        if (it->second.npc)
+        {
+            auto body = std::make_shared<Npc>(*it->second.npc);
+            body->set_label({});
+            body->set_prompt(L"");
+            wcmods::after(20, [body] { body->remove(); });
+        }
+        s.cats.erase(it);
     }
 
     // What each cat wants now, worked out again (each day, and as the Clans come in).
@@ -564,6 +609,9 @@ namespace clw::life
         out.set("part", Json(s.part ? static_cast<int>(*s.part) : -1));
         out.set("doing", doing);
         out.set("in_world", Json(in_world));
+        int held = 0;
+        for (auto& [_, l] : s.cats) held += l.held;
+        out.set("held", Json(held));
         out.set("out", Json(out_of_it));
         return out;
     }

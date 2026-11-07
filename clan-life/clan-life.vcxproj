@@ -114,6 +114,7 @@
     <ClInclude Include="cpp\src\camp_life.hpp" />
     <ClInclude Include="cpp\src\camps.hpp" />
     <ClInclude Include="cpp\src\life.hpp" />
+    <ClInclude Include="cpp\src\fights.hpp" />
     <ClInclude Include="cpp\src\mind.hpp" />
     <ClInclude Include="cpp\src\you_game.hpp" />
     <ClInclude Include="cpp\src\you.hpp" />

@@ -68,6 +68,11 @@ def _cat(agent, name):
     return None
 
 
+def _events(agent):
+    raw = _get(agent, RTC, "RealtimeCombat.cat_events")
+    return json.loads(raw) if isinstance(raw, str) else (raw or [])
+
+
 def _beat(agent, name):
     """Strike the cat until it yields: next to it, facing it, healed between blows."""
     yielded = _get(agent, RTC, "yielded") or 0
@@ -104,7 +109,6 @@ def test_fights_spare_and_kill(agent):
     grown = [c for c in _life(agent)["cats"] if not c["name"].endswith(("kit", "paw", "star"))]
     assert len(grown) >= 2, _life(agent)["cats"]
     first, second = grown[0], grown[1]
-    seen_ids = {c["name"]: c["id"] for c in _life(agent)["cats"]}
     fought, spared, killed = (_get(agent, MOD, k) or 0 for k in ("fights_fought", "fights_spared", "fights_killed"))
 
     # the first: beaten, held down (Clan life leaves it be), then walked away from: spared
@@ -119,7 +123,6 @@ def test_fights_spare_and_kill(agent):
     agent.lua(f"return Game.cat():teleport({x}, {y}, {z})")
     time.sleep(2)
     _beat(agent, second["name"])
-    seen_ids.update({c["name"]: c["id"] for c in _life(agent)["cats"]})
     c = _cat(agent, second["name"])
     if c:
         cx, cy, cz = c["at"]
@@ -131,12 +134,12 @@ def test_fights_spare_and_kill(agent):
     with open(RECORD, encoding="utf-8") as f:
         rec = json.load(f)["slots"][str(int(_get(agent, MOD, "slot")))]
     print(json.dumps({"first": first, "second": second, "news": rec["news"][-4:]}), shot_down, shot_killed)
-    # the one killed (the blow lands on the nearest cat down in front: a bystander struck down too can be it)
-    kills = [n[1] for n in rec["news"] if "was killed by" in n[1]]
-    assert kills, rec["news"][-4:]
-    victim = kills[-1].split(" was killed by")[0]
-    victim_id = seen_ids.get(victim)
-    assert victim_id is not None, (victim, seen_ids)
+    # the one killed, as Real-time combat told it (the blow lands on the nearest cat down in front: a bystander struck
+    # down too, a kit that wandered in, can be it)
+    killed_events = [e for e in _events(agent) if e["what"] == "killed"]
+    assert killed_events, _events(agent)
+    victim, victim_id = killed_events[-1]["name"], int(killed_events[-1]["id"])
+    assert any(n[1].startswith(f"{victim} was killed by") for n in rec["news"]), (victim, rec["news"][-4:])
     assert victim_id not in {c["id"] for c in rec["cats"]}, "the killed cat is still in the Clans"
     # its Clan remembers: some ThunderClan cat holds the killing in mind
     thunder = {c["id"] for c in rec["cats"] if c["clan"] == "ThunderClan"}

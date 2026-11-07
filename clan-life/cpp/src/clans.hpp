@@ -296,11 +296,15 @@ namespace cl
         auto clan(Clan c, std::vector<Cat> keep = {}, const Sizes& sz = {}) -> std::vector<Cat>
         {
             std::vector<Cat> out = std::move(keep);
-            for (Cat& k : out)
+            for (Cat& k : out)   // the game's own: their names and looks kept, what the game doesn't say made up
             {
                 k.clan = c;
                 k.from_game = true;
                 k.id = next_id++;
+                if (k.moons <= 0 && k.rank != Rank::Kit) k.moons = moons_for(k.rank);
+                k.she = k.rank == Rank::Queen || chance(0.5);   // the game keeps no gender for its cats
+                k.grown = std::uniform_real_distribution<double>(0, 1)(rng);
+                pick_traits(k);
                 taken.insert(full_name(t, k));
             }
             auto count = [&](Rank r) { return static_cast<int>(std::count_if(out.begin(), out.end(), [&](const Cat& x) { return x.rank == r; })); };
@@ -320,6 +324,16 @@ namespace cl
             for (Cat& q : out)
                 if (q.rank == Rank::Queen && q.mate < 0)
                     if (Cat* tom = pick_mate(out, q)) pair(q, *tom);
+            // the game's own kits (it says nothing of their parents): the first queen's, and her mate's
+            for (Cat& k : out)
+                if (k.rank == Rank::Kit && k.mother < 0)
+                    for (const Cat& q : out)
+                        if (q.rank == Rank::Queen)
+                        {
+                            k.mother = q.id;
+                            k.father = q.mate;
+                            break;
+                        }
             std::vector<Cat> kits;
             for (const Cat& q : out)
                 if (q.rank == Rank::Queen && count_kits_of(out, q.id) == 0)
@@ -474,14 +488,18 @@ namespace cl
                     }
         }
 
-        auto finish(Cat& c) -> void
+        auto pick_traits(Cat& c) -> void
         {
-            c.id = next_id++;
-            c.grown = std::uniform_real_distribution<double>(0, 1)(rng);
             const int a = std::uniform_int_distribution<int>(0, static_cast<int>(trait_names.size()) - 1)(rng);
             int b = std::uniform_int_distribution<int>(0, static_cast<int>(trait_names.size()) - 2)(rng);
             if (b >= a) ++b;
             c.traits = {a, b};
+        }
+        auto finish(Cat& c) -> void
+        {
+            c.id = next_id++;
+            c.grown = std::uniform_real_distribution<double>(0, 1)(rng);
+            pick_traits(c);
             name_for(c);
         }
 

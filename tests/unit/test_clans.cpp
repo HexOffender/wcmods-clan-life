@@ -227,8 +227,28 @@ static void your_clan_keeps_the_games_cats()
     elder.rank = cl::Rank::Elder;
     elder.prefix = 8;   // Fern
     elder.suffix = 3;
-    const auto all = m.clan(cl::Clan::ShadowClan, {leader, elder});
+    cl::Cat kit;
+    kit.rank = cl::Rank::Kit;
+    kit.prefix = 9;   // Thistle
+    kit.suffix = 0;   // kit
+    cl::Cat queen;
+    queen.rank = cl::Rank::Queen;
+    queen.prefix = 10;   // Briar
+    queen.suffix = 4;
+    const auto all = m.clan(cl::Clan::ShadowClan, {leader, elder, kit, queen});
     CHECK(count(all, cl::Rank::Leader) == 1);
+    // what the game doesn't say is made up: ages, traits; its kit given its queen (and her mate) as parents
+    CHECK(all[0].moons >= 45 && all[1].moons >= 100 && all[0].traits[0] != all[0].traits[1]);
+    CHECK(all[2].mother == all[3].id && all[3].she && all[2].father == all[3].mate);
+    int toms = 0, she_cats = 0;   // the game keeps no gender: the kept cats get one each, about half and half
+    for (uint32_t seed = 1; seed <= 40; ++seed)
+    {
+        cl::Maker mm(t, seed);
+        const auto kept = mm.clan(cl::Clan::ShadowClan, {leader, elder});
+        (kept[0].she ? she_cats : toms) += 1;
+        (kept[1].she ? she_cats : toms) += 1;
+    }
+    CHECK(toms >= 20 && she_cats >= 20);
     CHECK(cl::full_name(t, all[0]) == "Rookstar" && all[0].from_game && all[1].from_game);
     int named_rook = 0;
     for (const cl::Cat& c : all) named_rook += cl::full_name(t, c) == "Rookstar";

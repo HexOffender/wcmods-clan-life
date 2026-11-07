@@ -12,3 +12,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: The rules' unit tests (g++)
         run: python3 tests/unit/run.py
+      - name: The in-game tests compile
+        run: python3 -m py_compile tests/game/*.py
+      - name: The mod's JSON files read
+        run: |
+          python3 -c "import json; [json.load(open(p, encoding='utf-8')) for p in ('clan-life/mod.json', 'clan-life/settings.json')]"

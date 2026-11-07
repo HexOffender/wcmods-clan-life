@@ -11,9 +11,24 @@ It's a C++ mod made with [wcmods](https://github.com/HexOffender/warrior-cats-mo
 [Real-time combat](https://github.com/HexOffender/wcmods-realtime-combat).
 
 **In development.** [docs/plan.md](docs/plan.md) is the plan, step by step; each step is a pull request with its
-own tests. There's nothing to install yet.
+own tests. There's nothing to install yet. So far (step 1): the four Clans, made for each Sandbox mode save slot the
+first time you play it and kept beside the game's saves (`clan-life.json`), and the mod menu's **Allegiances** page,
+which lists them as the books' first pages do.
+
+## Building it
+
+As [Real-time combat](https://github.com/HexOffender/wcmods-realtime-combat#building-it): with wcmods set up
+(`python wcmods.py cpp setup` once), `python wcmods.py cpp build <this repository>\clan-life` makes
+`clan-life\dlls\main.dll`; or open `clan-life\clan-life.sln` in Visual Studio after `python tools\sync_ue4ss_props.py`
+in `clan-life\`.
 
 ## Tests
 
 - **The rules** (`clan-life/cpp/src`, plain C++ with nothing of the game in it): `python tests/unit/run.py` builds
   and runs `tests/unit/test_*.cpp` with g++, clang++ or Visual Studio. CI runs them on every pull request.
+- **In the game** (`tests/game/`), with wcmods' agent and a Sandbox mode cat being played:
+
+  ```
+  python wcmods.py agent install --with <this repository>\clan-life --with <wcmods-sandbox>\sandbox
+  python wcmods.py agent test <this repository>\tests\game --launch
+  ```

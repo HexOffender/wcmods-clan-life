@@ -68,10 +68,11 @@ namespace clw
     // The game's tables as the rules take them, with the colour slots (read on the game thread the first time).
     inline auto game() -> const Game&
     {
-        static Game g;
-        if (g.ok) return g;
+        static Game kept;
+        if (kept.ok) return kept;
         const wcmods::CatTables& t = wcmods::cat_tables();
-        if (!t) return g;
+        if (!t) return kept;
+        Game g;   // made whole, then kept: a try before the colour slots are there leaves nothing half filled
         cl::Tables& r = g.tables;
         auto clan_weights = [](const std::map<std::wstring, double>& w) {
             std::map<Clan, double> out;
@@ -116,7 +117,8 @@ namespace clw
         }
         for (const wcmods::SlotColour& c : slots.eyes) g.eyes.push_back({c.r, c.g, c.b});
         g.ok = !r.prefixes.empty() && !r.suffixes.empty() && !r.coats.empty();
-        return g;
+        if (g.ok) kept = std::move(g);
+        return kept;
     }
 
     inline auto prefix_index(const cl::Tables& t, std::wstring_view id) -> int
@@ -280,10 +282,11 @@ namespace clw
         w.made_now = true;
         cl::Maker m(game().tables, w.seed);
         // your Clan first: its own cats' names are taken before the others are named
-        for (const Cat& c : your_clan_cats(yours)) m.taken.insert(cl::full_name(game().tables, c));
+        const std::vector<Cat> own = your_clan_cats(yours);   // (the save read once: it's half a megabyte)
+        for (const Cat& c : own) m.taken.insert(cl::full_name(game().tables, c));
         for (Clan c : cl::clans)
         {
-            auto made = m.clan(c, c == yours ? your_clan_cats(yours) : std::vector<Cat>{});
+            auto made = m.clan(c, c == yours ? own : std::vector<Cat>{});
             w.cats.insert(w.cats.end(), made.begin(), made.end());
         }
         return w;

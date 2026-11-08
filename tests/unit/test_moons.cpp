@@ -95,16 +95,10 @@ static void kits_grow_up()
     CHECK(a->rank == Rank::Warrior && a->mentor == -1);
     CHECK(!ends_with(cl::full_name(t, *a), "paw") && !ends_with(cl::full_name(t, *a), "kit"));
     CHECK(has(news, apprentice_was + " has earned"));
-    // every name in the forest still once, but an apprentice's (its -paw may be another's; a_kit_whose_name_is_taken)
+    // every name in the forest still once (a taken -paw gets a new prefix: a_kit_whose_name_is_taken)
     std::set<std::string> names;
-    size_t named = 0;
-    for (const Cat& c : cats)
-        if (c.rank != Rank::Apprentice && c.rank != Rank::MedicineApprentice)
-        {
-            names.insert(cl::full_name(t, c));
-            ++named;
-        }
-    CHECK(names.size() == named);
+    for (const Cat& c : cats) names.insert(cl::full_name(t, c));
+    CHECK(names.size() == cats.size());
 }
 
 static void mates_queens_and_kits()
@@ -339,7 +333,8 @@ static void a_death_and_its_places_filled()
 
 static void a_kit_whose_name_is_taken()
 {
-    // its -paw name already another cat's: it's an apprentice called -paw all the same
+    // its -paw name already another cat's: it's an apprentice called -paw all the same, with a new prefix (no two
+    // living cats share a name), not a kit's name on an apprentice
     const cl::Tables t = tables();
     auto cats = forest(t, 33);
     cl::Liking liking;
@@ -359,9 +354,18 @@ static void a_kit_whose_name_is_taken()
     for (size_t i = 0; i < t.suffixes.size(); ++i)
         if (t.suffixes[i].word == "paw") other.suffix = static_cast<int>(i);
     const int id = kit->id;
+    const std::string kit_was = cl::full_name(t, *kit), others = cl::full_name(t, other);
     cats.push_back(other);
-    cl::moon_passes(cats, t, liking, rng);
-    CHECK(ends_with(cl::full_name(t, *by_id(cats, id)), "paw"));
+    const auto news = cl::moon_passes(cats, t, liking, rng);
+    const Cat* k = by_id(cats, id);
+    const std::string now = cl::full_name(t, *k);
+    CHECK(ends_with(now, "paw"));
+    CHECK(now != others && now != kit_was);
+    CHECK(k->prefix != other.prefix);
+    CHECK(has(news, kit_was + " is now " + now));
+    std::set<std::string> names;
+    for (const Cat& c : cats) names.insert(cl::full_name(t, c));
+    CHECK(names.size() == cats.size());
 }
 
 int main()

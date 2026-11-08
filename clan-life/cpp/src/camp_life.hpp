@@ -576,7 +576,9 @@ namespace clw::life
         s.cap = cap;
     }
 
-    // For tests and the menu: what each cat in the near camp is doing, and how many are in the world.
+    // For tests and the menu: what each cat in the near camp is doing, and how many are in the world. "all" has every cat
+    // of the camp (id, name, rank, doing as its label says it, in_world, in_den, and where it is when it's in the world);
+    // "cats" the first dozen in the world (id, name, where), as the tests read them.
     inline auto snapshot(const World& w) -> wcmods::Json
     {
         using wcmods::Json;
@@ -584,28 +586,43 @@ namespace clw::life
         Json out = Json::object();
         Json doing = Json::object();
         int in_world = 0, out_of_it = 0;
-        Json where = Json::array();   // (the first dozen in the world, for tests: id, name, where)
+        Json where = Json::array();
+        Json all = Json::array();
         for (const Cat& c : w.cats)
         {
             if (!s.camp || c.clan != *s.camp || !lives(c)) continue;
             const CatLife& l = s.cats.at(c.id);
             const std::string what(cl::name(l.act.doing));
             doing.set(what, Json(doing[what].number(0) + 1));
-            if (l.npc && l.npc->actor())
+            Json one = Json::object();
+            one.set("id", Json(c.id));
+            one.set("name", Json(cl::full_name(game().tables, c)));
+            one.set("rank", Json(std::string(cl::name(c.rank))));
+            one.set("doing", Json(wcmods::utf8(words_for(w, l))));
+            one.set("in_den", Json(l.in_den));
+            const bool in = l.npc && l.npc->actor();
+            one.set("in_world", Json(in));
+            if (in)
             {
                 ++in_world;
-                if (auto at = l.npc->location(); at && where.size() < 12)
+                if (auto at = l.npc->location())
                 {
-                    Json one = Json::object();
-                    one.set("id", Json(c.id));
-                    one.set("name", Json(cl::full_name(game().tables, c)));
                     one.set("at", detail::to_json(*at));
-                    where.push(one);
+                    if (where.size() < 12)
+                    {
+                        Json brief = Json::object();
+                        brief.set("id", Json(c.id));
+                        brief.set("name", Json(cl::full_name(game().tables, c)));
+                        brief.set("at", detail::to_json(*at));
+                        where.push(brief);
+                    }
                 }
             }
             else ++out_of_it;
+            all.push(one);
         }
         out.set("cats", where);
+        out.set("all", all);
         out.set("near", Json(s.camp ? std::string(cl::name(*s.camp)) : std::string()));
         out.set("part", Json(s.part ? static_cast<int>(*s.part) : -1));
         out.set("doing", doing);

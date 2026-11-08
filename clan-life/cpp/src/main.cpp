@@ -51,6 +51,7 @@ namespace
         double minutes = 20;
         bool night_sky = true;
         int cats = 30;
+        double within = 40;   // m from your cat: a cat farther off is kept as data, not in the world
     };
     // How many days to a moon (1: each day by the clock is a moon, so a kit is apprenticed after six days).
     auto days_per_moon() -> int
@@ -63,7 +64,8 @@ namespace
         std::lock_guard lock(wcmods::settings_lock());
         const wcmods::Json& s = wcmods::settings();
         return {std::clamp(s["day_minutes"].number(20), 5.0, 240.0), s["night_sky"].boolean(true),
-                static_cast<int>(std::clamp(s["cats_in_world"].number(30), 5.0, 50.0))};
+                static_cast<int>(std::clamp(s["cats_in_world"].number(30), 5.0, 50.0)),
+                std::clamp(s["cats_within_m"].number(40), 10.0, 100.0)};
     }
 
     struct State
@@ -91,6 +93,7 @@ namespace
         wcmods::day_sky(on && d.night_sky);
         wcmods::set_day_length(on && d.minutes != 20 ? std::optional<double>(d.minutes * 60) : std::nullopt);
         clw::life::state().cap = d.cats;
+        clw::life::state().within = d.within * 100;
     }
 
     auto set_state(const std::string& now) -> void
@@ -253,7 +256,7 @@ namespace
         State& s = state();
         if (s.state != "on" || !s.world) return;
         const DaySettings d = day_settings();
-        if (const auto& a = applied(); !a || a->minutes != d.minutes || a->night_sky != d.night_sky || a->cats != d.cats) apply_day(true);
+        if (const auto& a = applied(); !a || a->minutes != d.minutes || a->night_sky != d.night_sky || a->cats != d.cats || a->within != d.within) apply_day(true);
         for (std::wstring& line : clw::fights::tick(*s.world)) banner(L"A fight", std::move(line));
         clw::life::tick(*s.world, 0.5);
         for (std::wstring& line : clw::party::tick(*s.world, clw::you::your_rank())) banner(L"Your party", std::move(line));

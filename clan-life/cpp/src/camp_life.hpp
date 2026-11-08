@@ -61,6 +61,7 @@ namespace clw::life
         std::optional<Clan> camp;          // the camp whose cats are in the world
         int cap = 30;                     // at most this many in the world
         double within = 4000;             // cm from your cat: a cat whose place is farther is kept as data, not in the world
+        double label_range = 1000;        // cm from your cat within which a cat's label shows (settings' label_range_m)
         bool found_camps = false;         // all four
         cl::WantsById wants;              // what each cat wants (mind.hpp), worked out each day
         double look_again = 0;            // real seconds before looking for the camps again
@@ -112,7 +113,7 @@ namespace clw::life
     {
         if (!l.npc) return;
         l.npc->set_label({.name = wcmods::wide(cl::full_name(game().tables, c)), .title = rank_title(c.rank),
-                          .extra = words_for(w, l), .range = 700});
+                          .extra = words_for(w, l), .range = state().label_range});
     }
 
     // ------------------------------------------------------------------------------------------- deciding
@@ -547,7 +548,7 @@ namespace clw::life
                     l.npc->stop();
                     if (const Cat* c = by_id(w, id))
                         l.npc->set_label({.name = wcmods::wide(cl::full_name(game().tables, *c)), .title = rank_title(c->rank),
-                                          .extra = L"In a fight", .range = 700});
+                                          .extra = L"In a fight", .range = s.label_range});
                 }
                 l.held = held;
             }

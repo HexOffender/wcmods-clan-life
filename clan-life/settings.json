@@ -1,10 +1,11 @@
 {
-  "_help": "Clan life's settings. enabled: the Clans (false: none, even while you play a Sandbox mode cat). day_minutes: how many real minutes a day lasts (20 is the game's own). night_sky: the sky follows the clock, dark at night. cats_in_world: at most how many of a camp's cats are in the world at once (5 to 50), the nearest to your cat first. cats_within_m: a cat whose place is farther from your cat than this (metres, 10 to 100) is kept as data, out of the world, its day going on. days_per_moon: how many days by the clock make a moon (1: a kit is apprenticed after six days). party_size: how many clanmates can come with you (1 to 5).",
+  "_help": "Clan life's settings. enabled: the Clans (false: none, even while you play a Sandbox mode cat). day_minutes: how many real minutes a day lasts (20 is the game's own). night_sky: the sky follows the clock, dark at night. cats_in_world: at most how many of a camp's cats are in the world at once (5 to 50), the nearest to your cat first. cats_within_m: a cat whose place is farther from your cat than this (metres, 10 to 100) is kept as data, out of the world, its day going on. label_range_m: how near a cat must be for its name to show over it (metres, 3 to 25). days_per_moon: how many days by the clock make a moon (1: a kit is apprenticed after six days). party_size: how many clanmates can come with you (1 to 5).",
   "enabled": true,
   "day_minutes": 20,
   "night_sky": true,
   "cats_in_world": 30,
   "cats_within_m": 40,
+  "label_range_m": 10,
   "days_per_moon": 1,
   "party_size": 3
 }

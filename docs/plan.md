@@ -293,7 +293,8 @@ sharing tongues with the cat it likes best, lying in the sun, grooming, playing,
 listening, the medicine cat sorting herbs, apprentices taking moss to the elders, queens nursing. At night most go into
 their dens (out of the world) and some sleep curled up outside; patrols and hunters leave through the entrance and
 come back, the hunters with prey for the pile. Liking grows between cats that share tongues, train and patrol
-together. The sky follows the clock (settings: `night_sky`, `day_minutes`, `cats_in_world`). Your own Clan's cats that
+together. The sky follows the clock (settings: `night_sky`, `day_minutes`, `cats_in_world`, `cats_within_m`: the nearest
+cats come in, the rest live on as data). Your own Clan's cats that
 the game made are left as the game has them. In game, ThunderClan's camp at noon had 27 cats in the world doing five
 different things; at night 26 were asleep (14 inside their dens) with one guarding the entrance; at dawn a patrol of
 three was away.

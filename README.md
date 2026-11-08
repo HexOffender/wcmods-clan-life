@@ -18,7 +18,9 @@ own tests. There's nothing to install yet. So far:
 - **Life in camp** (step 3): the day goes round by the game's clock, dark at night. The camp your cat is in fills with
   its Clan's cats, each living its day: the dawn patrol, hunters bringing prey to the pile, apprentices training with
   their mentors, cats sharing tongues and lying in the sun, elders telling stories to kits, everyone to their dens at
-  night with a guard at the entrance. Each has a label with its name, rank and what it's doing. The **Camp places**
+  night with a guard at the entrance. Each has a label with its name, rank and what it's doing. Every cat lives its
+  day whether or not it's in the world: the ones nearest your cat are, up to `cats_in_world` and within
+  `cats_within_m` (the settings); the rest are kept as data and come in as you come near. The **Camp places**
   page moves a camp's fresh-kill pile, speaking rock or entrance to where you stand.
 - **Growing up, mates and kits** (step 6, in part): a moon passes each day by the clock (a setting). Kits are
   apprenticed and apprentices named warriors, old cats join the elders, cats who like each other become mates (any

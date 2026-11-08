@@ -59,6 +59,7 @@ namespace clw::life
         std::optional<double> last_clock;
         std::optional<Clan> camp;          // the camp whose cats are in the world
         int cap = 30;                     // at most this many in the world
+        double within = 4000;             // cm from your cat: a cat whose place is farther is kept as data, not in the world
         bool found_camps = false;         // all four
         cl::WantsById wants;              // what each cat wants (mind.hpp), worked out each day
         double look_again = 0;            // real seconds before looking for the camps again
@@ -418,17 +419,58 @@ namespace clw::life
             s.camp = now;
         }
         if (!camp) return;
-        int in_world = 0;
-        for (Cat& c : w.cats)
-            if (auto& l = s.cats[c.id]; c.clan == *now && !l.along && l.npc && (l.npc->actor() || l.npc->waking())) ++in_world;
+        // The camp's cats that should show, nearest to your cat first (a cat in the world by where it is, one out by
+        // where its day has it): the nearest within `within` come in, up to the cap; the rest live on as data. A cat in
+        // the world stays until it's well past the edge or well past the cap, so nothing flickers at either.
+        struct Near
+        {
+            Cat* cat;
+            CatLife* life;
+            double d;
+        };
+        std::vector<Near> order;   // (`near` is a Windows macro)
         for (Cat& c : w.cats)
         {
             if (c.clan != *now || !lives(c)) continue;
             CatLife& l = s.cats[c.id];
-            if (!shows(l) || in_world >= s.cap || l.held || l.along) continue;
+            if (l.held || l.along) continue;
+            if (!shows(l))
+            {
+                if (l.npc && l.npc->actor()) l.npc->sleep();   // into its den, or away from camp
+                continue;
+            }
+            std::optional<Vec3> at = l.npc ? l.npc->location() : std::nullopt;
+            if (!at)
+            {
+                if (l.target.x == 0 && l.target.y == 0) l.target = place_for(c, l);
+                at = l.target;
+            }
+            order.push_back({&c, &l, std::hypot(at->x - you.x, at->y - you.y)});
+        }
+        std::sort(order.begin(), order.end(), [](const Near& p, const Near& q) { return p.d < q.d; });
+        // out: those in the world that are too far now, or too far down the order
+        int in_world = 0;
+        for (size_t i = 0; i < order.size(); ++i)
+        {
+            CatLife& l = *order[i].life;
+            const bool in = l.npc && (l.npc->actor() || l.npc->waking());
+            if (!in) continue;
+            if (order[i].d > s.within + 600 || static_cast<int>(i) >= s.cap + 2)
+            {
+                if (l.npc->actor()) l.npc->sleep();
+                continue;
+            }
+            ++in_world;
+        }
+        // in: the nearest that aren't, while there's room
+        for (const Near& n : order)
+        {
+            Cat& c = *n.cat;
+            CatLife& l = *n.life;
+            if (n.d > s.within || in_world >= s.cap) break;
             if (!l.npc)
             {
-                l.target = place_for(c, l);
+                if (l.target.x == 0 && l.target.y == 0) l.target = place_for(c, l);
                 l.npc = wcmods::spawn_npc(spec_of(c, l.target));
                 l.npc->set_prompt(L"Talk");
             }

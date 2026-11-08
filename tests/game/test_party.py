@@ -230,7 +230,14 @@ def test_a_party_that_fights_beside_you(agent):
     _until(lambda: (_get(agent, RTC, "allies_fighting") or 0) == 0, 10, "the party given back to Clan life")
     got = agent.lua(GO_OUT % {"far": 900}, timeout=20)
     assert got is True, got
-    _until(lambda: (_away(agent, friend["id"]) or 1e9) < 500, 25, f"{friend['name']} following again after the fight")
+    seen = []   # (how far it was each second, and how the mods had it, for a failure's message)
+    end = time.time() + 25
+    while time.time() < end and (_away(agent, friend["id"]) or 1e9) >= 500:
+        seen.append({"t": round(25 - (end - time.time())), "away": _away(agent, friend["id"]), "states": _json(agent, MOD, "party_states"),
+                     "fighting": _json(agent, RTC, "RealtimeCombat.fighting"), "allies_fighting": _get(agent, RTC, "allies_fighting"),
+                     "held": life().get("held")})
+        time.sleep(1)
+    assert (_away(agent, friend["id"]) or 1e9) < 500, f"{friend['name']} never followed again after the fight: {json.dumps(seen[-6:])}"
 
     # sent home; asked again, nightfall sends it home
     _hook(agent, "test_home", friend["id"])

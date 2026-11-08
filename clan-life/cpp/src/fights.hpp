@@ -54,10 +54,14 @@ namespace clw::fights
         return out;
     }
 
-    // One of Real-time combat's events: the memories, and for a killing the death. The news to show.
-    inline auto handle(World& w, const std::string& what, int id) -> std::vector<std::wstring>
+    // A piece of news to show: the banner's title it goes under, and its words.
+    using Shown = std::pair<std::wstring, std::wstring>;
+
+    // One of Real-time combat's events: the memories, and for a killing the death. The news to show: the fight's own
+    // under "A fight", the code's under "The warrior code", and what a death changed in a Clan under that Clan's name.
+    inline auto handle(World& w, const std::string& what, int id) -> std::vector<Shown>
     {
-        std::vector<std::wstring> shown;
+        std::vector<Shown> shown;
         State& s = state();
         const Cat* cat = by_id(w, id);
         if (!cat) return shown;
@@ -71,14 +75,13 @@ namespace clw::fights
         }
         else if (what == "struck_again")   // your cat's second blow on it in a fight: no accident (one is forgiven)
         {
-            for (auto& line : code::deed(w, cl::Happened::Fought, id)) shown.push_back(std::move(line));
+            for (auto& line : code::deed(w, cl::Happened::Fought, id)) shown.push_back({L"The warrior code", std::move(line)});
         }
         else if (what == "spared")
         {
             cl::happened(w.minds, cl::Happened::Spared, cl::your_id, id, w.moons, witnesses(w, id, 2500), w.cats, w.liking);
             wcmods::share("fights_spared", ++s.spared);
-            auto& lives = life::state().cats;   // up again: on with its day
-            if (auto it = lives.find(id); it != lives.end()) it->second.until = life::state().now;
+            life::spared(id);   // up again, beaten: to its den a while, then on with its day
         }
         else if (what == "fought_beside" || what == "fell_beside")   // your party (Part B2)
         {
@@ -98,15 +101,15 @@ namespace clw::fights
                 heard.told = true;
                 cl::remember(w.minds, c.id, heard, w.moons);
             }
-            for (auto& line : code::deed(w, cl::Happened::Killed, id)) shown.push_back(std::move(line));
+            for (auto& line : code::deed(w, cl::Happened::Killed, id)) shown.push_back({L"The warrior code", std::move(line)});
             const std::string text = std::format("{} was killed by {}.", name, wcmods::utf8(you::your_name()));
             w.news.push_back({std::string(cl::name(clan)), text});
-            shown.push_back(wcmods::wide(text));
-            // gone from the Clans, its place filled
+            shown.push_back({L"A fight", wcmods::wide(text)});
+            // gone from the Clans, its place filled (a new deputy, a new mentor: its Clan's news, not the fight's)
             for (const cl::MoonNews& n : cl::death(w.cats, id, t, s.rng))
             {
                 w.news.push_back({std::string(cl::name(n.clan)), n.text});
-                shown.push_back(wcmods::wide(n.text));
+                shown.push_back({wcmods::wide(cl::name(n.clan)), wcmods::wide(n.text)});
                 if (n.what)
                 {
                     std::vector<int> all;
@@ -120,15 +123,16 @@ namespace clw::fights
             life::bury(id);
             life::rethink(w);
             clw::save(w);
+            clw::share_counts(w);
             wcmods::share("fights_killed", ++s.killed);
         }
         return shown;
     }
 
-    // Twice a second: Real-time combat's new events. The news to show.
-    inline auto tick(World& w) -> std::vector<std::wstring>
+    // Twice a second: Real-time combat's new events. The news to show, each under its title.
+    inline auto tick(World& w) -> std::vector<Shown>
     {
-        std::vector<std::wstring> shown;
+        std::vector<Shown> shown;
         State& s = state();
         const wcmods::Json events = wcmods::shared("RealtimeCombat.cat_events");
         for (const wcmods::Json& e : events.values())

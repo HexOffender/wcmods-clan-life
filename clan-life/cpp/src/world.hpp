@@ -351,6 +351,19 @@ namespace clw
         return w;
     }
 
+    // How many cats there are, and in each Clan (for tests and the menu): as the Clans come in, after each moon, and
+    // after a death.
+    inline auto share_counts(const World& w) -> void
+    {
+        wcmods::share("cats", static_cast<double>(w.cats.size()));
+        for (Clan c : cl::clans)
+        {
+            int n = 0;
+            for (const Cat& cat_ : w.cats) n += cat_.clan == c;
+            wcmods::share(std::format("clan {}", cl::name(c)), static_cast<double>(n));
+        }
+    }
+
     inline auto save(const World& w) -> bool
     {
         using wcmods::Json;

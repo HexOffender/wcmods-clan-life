@@ -56,22 +56,27 @@ def teardown(agent):
 
 
 def test_the_four_clans_are_made_and_kept(agent):
-    """Each Clan has the books' numbers (a leader, a deputy, a medicine cat, 9 to 13 warriors...: 18 to 40 cats); the
-    record beside the saves has them all, names never twice, your Clan's own cats from the game among them."""
+    """Each Clan has the books' numbers (a leader, a deputy, a medicine cat, 9 to 13 warriors...: 18 to 40 cats) as it's
+    made (a Clan that's lived moons since has what its kits and apprentices grew into); the record beside the saves has
+    them all, names never twice, your Clan's own cats from the game among them."""
     slot = _get(agent, "slot")
     total = _get(agent, "cats")
+    made = _get(agent, "made") is True   # (made now, not read back from a record that's lived)
     counts = {c: _get(agent, f"clan {c}") for c in CLANS}
-    assert all(18 <= n <= 40 for n in counts.values()), counts
-    assert sum(counts.values()) == total
+    if made:
+        assert all(18 <= n <= 40 for n in counts.values()), counts
+    assert sum(counts.values()) == total, (counts, total)
     rec = _record()["slots"][str(int(slot))]
     cats = rec["cats"]
-    assert len(cats) == total and rec["yours"] == _get(agent, "yours")
+    assert len(cats) == total and rec["yours"] == _get(agent, "yours"), (len(cats), total, rec["yours"])
     names = [c["name"] for c in cats]
     assert len(set(names)) == len(names), "a name given twice"
     for clan in CLANS:
         ranks = [c["rank"] for c in cats if c["clan"] == clan]
         assert ranks.count("leader") == 1 and ranks.count("deputy") == 1 and ranks.count("medicine cat") == 1, (clan, ranks)
-        assert 9 <= ranks.count("warrior") <= 14 and ranks.count("elder") >= 1, (clan, ranks)
+        assert ranks.count("warrior") >= (9 if made else 1) and ranks.count("elder") >= 1, (clan, ranks)
+        if made:
+            assert ranks.count("warrior") <= 14, (clan, ranks)
         for c in cats:
             if c["clan"] == clan and c["rank"] == "leader":
                 assert c["name"].endswith("star"), c["name"]

@@ -399,7 +399,9 @@ with the cats' own fight moves, and a patrol that meets an animal fights it. It 
 combat (allies it knows about), done as its own pull request there. Your party comes first (the owner's, 2026-11-07:
 wcmods' rivals-and-motives plan, Part B2); patrols joining fights come with step 4's patrols. The warrior code's
 judgements of your cat (that plan's Part E, step E1) came next: an exile's old Clan drives it out of camp through
-Real-time combat's hostile cats.
+Real-time combat's hostile cats. One of them your cat beats and spares is beaten for two game hours: it keeps to its
+den, takes no orders and isn't named hostile (and Real-time combat leaves a spared cat be for half a minute whatever
+Clan life says, so the two mods never disagree in the moment between).
 
 **Proof:** in game, a friend helping your cat beat a rabbit; a patrol driving an animal off.
 

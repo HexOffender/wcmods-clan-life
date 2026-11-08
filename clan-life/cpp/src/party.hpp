@@ -45,6 +45,7 @@ namespace clw::party
         {
             double best = 1e18;   // the nearest it's been to your cat lately
             double stuck = 0;     // seconds it's got no nearer
+            bool held = false;    // in Real-time combat's hands last tick
         };
         std::map<int, Track> track;
     };
@@ -287,20 +288,23 @@ namespace clw::party
                 }
             }
             // in a fight: Real-time combat's
+            State::Track& t = s.track[id];
             if (!a || l.held)
             {
+                t.held = l.held;
                 ++i;
                 continue;
             }
             // left far behind, fallen through the ground, or getting no nearer (no way to you on its walk: a fight can
-            // leave it on a ledge): beside you again
+            // leave it on a ledge, or off the cats' mesh where it slid at a foe): beside you again. Given back after a
+            // fight, it's watched afresh: where it had got to before counts for nothing now.
+            if (t.held) t = {};
             if (auto at = l.npc->location(); at && you && spot)
             {
                 const double d = std::hypot(at->x - you->x, at->y - you->y);
-                State::Track& t = s.track[id];
-                if (d < 600 || d < t.best - 100) t.best = d, t.stuck = 0;
+                if (d < 500 || d < t.best - 100) t.best = d, t.stuck = 0;
                 else t.stuck += 0.5;   // (twice a second)
-                if (d > 4000 || at->z < you->z - 800 || (t.stuck > 6 && d > 800))
+                if (d > 4000 || at->z < you->z - 800 || (t.stuck > 6 && d > 500))
                 {
                     wcmods::stop_following(a, false);
                     l.npc->move_to(*spot);

@@ -70,15 +70,18 @@ def test_six_moons(agent):
     after = _slot(agent)
     print(json.dumps({"moons": after.get("moons"), "news": after.get("news", [])[-12:], "kits": len(kits)}), shot)
     by_id = {c["id"]: c for c in after["cats"]}
+    names_seen = {c["name"] for c in before["cats"]} | {c["name"] for c in after["cats"]}
     # every cat that was there is six moons older
     for c in before["cats"]:
         assert by_id[c["id"]]["moons"] == c["moons"] + 6, (c["name"], c["moons"], by_id[c["id"]]["moons"])
-    # every kit of the start is apprenticed, its name a -paw (or a medicine cat's apprentice's)
+    # every kit of the start is apprenticed, its name a -paw (or a medicine cat's apprentice's) on its own prefix,
+    # unless that -paw name was another living cat's: then a new prefix (no two living cats share a name)
     for kid, k in kits.items():
         now = by_id[kid]
         assert now["rank"] in ("apprentice", "medicine cat apprentice"), (k["name"], now["rank"])
         assert now["name"].endswith("paw"), now["name"]
-        assert now["name"][:3] == k["name"][:3], (k["name"], now["name"])
+        if now["name"][:3] != k["name"][:3]:
+            assert k["name"][:-3] + "paw" in names_seen, (k["name"], now["name"])
     news = [n[1] for n in after.get("news", [])]
     assert any(" is now " in n for n in news), news[-10:]
     assert after["moons"] == moons + 6
@@ -95,5 +98,6 @@ def test_six_moons(agent):
     page = agent.menu.read()
     assert page.has("wants"), page.text()[:2000]
     agent.menu.close()
-    # the camp's cats are back in the world
+    # the camp's cats are back in the world (by day: at night most are asleep in their dens, out of it)
+    agent.lua("Game.time.set(12, 0) return true")
     _until(agent, lambda: json.loads(_get(agent, "life"))["in_world"] >= 10, 30, "the camp's cats back in the world")

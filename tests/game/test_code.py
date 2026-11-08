@@ -184,13 +184,60 @@ def test_a_warrior_who_kills_a_clanmate_is_exiled(agent):
     shot_driven = agent.shot()
     driven = _get(agent, RTC, "foes") or 0
 
+    # beat one of them until it yields and walk away: spared, it's beaten (to its den, out of the hostile list) and
+    # neither comes at your cat again nor can be locked on to, though you stand beside it
+    beaten = _beat_one(agent, warriors)
+    agent.lua(f"return Game.cat():teleport({x}, {y - 1500}, {z})")
+    _until(lambda: any(e["what"] == "spared" and int(e["id"]) == beaten["id"] for e in _json(agent, RTC, "RealtimeCombat.cat_events")),
+           15, f"{beaten['name']} spared")
+    spared = _until(lambda: next((c for c in _json(agent, MOD, "life").get("all", []) if c["id"] == beaten["id"] and c["beaten"]), None),
+                    5, f"{beaten['name']} beaten")
+    assert spared["doing"] == "Beaten", spared
+    time.sleep(1.5)
+    assert beaten["name"] not in _json(agent, MOD, "ClanLife.hostile"), "a beaten cat still named hostile"
+    came_back = False
+    for _ in range(4):   # beside it (where it is now: on its way to its den, or there), locking on
+        c = next((c for c in _json(agent, MOD, "life").get("cats", []) if c["id"] == beaten["id"]), None)
+        if c:
+            _next_to(agent, c)
+        time.sleep(1.5)
+        fighting = _json(agent, RTC, "RealtimeCombat.fighting")
+        if beaten["name"] in fighting:
+            came_back = True
+            break
+    shot_spared = agent.shot()
+
     # and none will walk with you
-    friend = next(iter(warriors - {victim["id"]}))
+    friend = next(iter(warriors - {victim["id"]}))   # (the beaten one too: an exile is refused whoever's asked)
     _hook(agent, "test_bond", friend, 90)
     _hook(agent, "test_ask", friend)
     refusal = _get(agent, MOD, "party_answer")
     print(json.dumps({"victim": victim["name"], "judged": judged[-1:], "hostile": len(hostile), "foes": driven,
-                      "refusal": refusal}), shot_judged, shot_driven)
+                      "beaten": beaten["name"], "refusal": refusal}), shot_judged, shot_driven, shot_spared)
     assert judged, news[-4:]
     assert driven > foes, "no old clanmate came at your cat"
+    assert not came_back, f"{beaten['name']}, spared, came at your cat again"
     assert (_get(agent, MOD, "party") or 0) == 0 and "Clanmate" in refusal, refusal
+
+
+def _beat_one(agent, warriors):
+    """Strike one of the Clan's warriors in camp until it yields (passive meanwhile: the yield comes from the blows,
+    not the fight's moves); the one that yielded, as Real-time combat names it (id, name)."""
+    yielded = _get(agent, RTC, "yielded") or 0
+    agent.lua('WCModsCpp.share("RealtimeCombat.passive", true) return true')
+    try:
+        for _ in range(90):
+            c = next((c for c in _json(agent, MOD, "life").get("cats", []) if c["id"] in warriors), None)
+            if c:
+                _next_to(agent, c)
+            _action(agent, "light")
+            time.sleep(0.9)
+            if (_get(agent, RTC, "yielded") or 0) > yielded:
+                break
+        else:
+            raise AssertionError("no warrior yielded")
+    finally:
+        agent.lua('WCModsCpp.share("RealtimeCombat.passive", nil) return true')
+    down = [e for e in _json(agent, RTC, "RealtimeCombat.cat_events") if e["what"] == "yielded"]
+    assert down, "no yield among Real-time combat's events"
+    return {"id": int(down[-1]["id"]), "name": down[-1]["name"]}

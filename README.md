@@ -32,7 +32,8 @@ own tests. There's nothing to install yet. So far:
 - **Your place** (in part): talk to your clanmates (or other Clans' cats) and they grow fond of you. On the **Clanmates** page, a clanmate who's
   close enough can become your mate once your cat is grown, and your kits wait there for you to name them.
 - **Fights** (with Real-time combat, wcmods' [rivals and motives plan](https://github.com/HexOffender/warrior-cats-mods/blob/main/docs/plans/rivals-and-motives.md),
-  part B): strike a Clan cat and it fights back as a cat. Beaten, it yields; walk away to spare it, or give the
+  part B): strike a Clan cat and it fights back as a cat. Beaten, it yields; walk away to spare it (it keeps to its
+  den a while, beaten, and leaves you be), or give the
   killing blow. The cats who saw it remember, the victim's Clan hears of it, and a cat killed is gone from the Clans
   (its place as leader, deputy, medicine cat or mentor filled). What the Clans make of it comes next in that plan.
 - **Your party** (that plan's part B2): on the **Clanmates** page, ask up to three clanmates to come with you (the
@@ -54,8 +55,9 @@ own tests. There's nothing to install yet. So far:
     - a leader answers to no one
   - **Standing:** your standing with each Clan is the game's own Clan bond, and it falls with each breach. The Clans
     think less of each other when one's cat harms another's.
-  - **Exile:** your old Clanmates drive you out of camp (with Real-time combat they fight you), and nobody walks with
-    you. After three days you can ask the leader to take you back on the Clanmates page.
+  - **Exile:** your old Clanmates drive you out of camp (with Real-time combat they fight you; one you beat and spare
+    keeps to its den a while and leaves you be), and nobody walks with you. After three days you can ask the leader to
+    take you back on the Clanmates page.
 
 ## Building it
 

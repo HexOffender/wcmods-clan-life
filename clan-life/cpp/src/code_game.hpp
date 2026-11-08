@@ -261,7 +261,8 @@ namespace clw::code
             if (to_dawn)
                 for (auto& line : dawn(w, your_rank)) shown.push_back(std::move(line));
         }
-        // an exile in its old camp: its old clanmates there (grown ones, not the elders) drive it out
+        // an exile in its old camp: its old clanmates there (grown ones, not the elders, and not one your cat beat and
+        // spared: it keeps to its den a while) drive it out
         wcmods::Json names = wcmods::Json::array();
         std::wstring all;
         bool in_camp = false;
@@ -274,7 +275,7 @@ namespace clw::code
                     {
                         if (c.clan != w.yours || c.rank == Rank::Kit || c.rank == Rank::Elder || c.rank == Rank::Queen || cl::medicine(c.rank)) continue;
                         auto it = life::state().cats.find(c.id);
-                        if (it == life::state().cats.end() || !it->second.npc) continue;
+                        if (it == life::state().cats.end() || !it->second.npc || life::beaten(it->second)) continue;
                         if (UObject* a = it->second.npc->actor())
                         {
                             names.push(wcmods::Json(wcmods::utf8(wcmods::name(a))));

@@ -38,6 +38,7 @@ namespace clw::life
         std::optional<Npc> npc;
         bool in_den = false;              // asleep inside its den (out of the world), not curled up outside it
         bool held = false;                // in a fight with your cat, or down (Real-time combat's: left be)
+        double beaten_until = 0;          // game hours: beaten by your cat and spared, it keeps to its den till then
         bool along = false;               // with your cat (party.hpp's): out of the camp's day
         bool there = false;               // arrived where it does it
         bool bringing_prey = false;       // a hunter coming home: to the pile first
@@ -77,6 +78,9 @@ namespace clw::life
     }
     // In the world now, or should be: in camp and not asleep in its den.
     inline auto shows(const CatLife& l) -> bool { return !cl::away(l.act.doing) && !(l.act.doing == Doing::Sleeping && l.in_den); }
+    // Beaten by your cat and spared (fights.hpp): it keeps to its den a while (decide), takes no orders, and an exile's
+    // old clanmate that's beaten doesn't drive it out again (code_game.hpp's hostile list leaves it out).
+    inline auto beaten(const CatLife& l) -> bool { return state().now < l.beaten_until; }
 
     inline auto to_part(wcmods::DayPart p) -> cl::DayPart { return static_cast<cl::DayPart>(static_cast<int>(p)); }
     // Whether a cat lives by these rules: the game's own cats of your Clan stand where the game puts them.
@@ -95,6 +99,7 @@ namespace clw::life
     }
     inline auto words_for(const World& w, const CatLife& l) -> std::wstring
     {
+        if (beaten(l)) return L"Beaten";
         std::wstring s = wcmods::wide(cl::name(l.act.doing));
         if (!s.empty()) s[0] = static_cast<wchar_t>(std::towupper(s[0]));
         if (l.act.with >= 0 && (l.act.doing == Doing::SharingTongues || l.act.doing == Doing::Training || l.act.doing == Doing::Playing))
@@ -145,7 +150,12 @@ namespace clw::life
             if (const Cat* other = by_id(w, l.act.with)) cl::gossip(w.minds, c, *other, w.moons, w.cats, w.liking);
         const bool was_hunting = l.act.doing == Doing::Hunting;
         auto& given = s.orders[c.clan].given;
-        if (auto it = given.find(c.id); it != given.end())
+        if (beaten(l))   // spared by your cat: to its den and out of the way till it's over it, whatever the orders
+        {
+            given.erase(c.id);
+            l.act = {Doing::Resting, -1, std::max(0.25, l.beaten_until - s.now), false};
+        }
+        else if (auto it = given.find(c.id); it != given.end())
         {
             l.act = it->second;
             given.erase(it);
@@ -585,6 +595,17 @@ namespace clw::life
         s.cats.erase(it);
     }
 
+    // A cat spared by your cat after yielding to it (fights.hpp): beaten for two game hours, it keeps to its den and
+    // its day goes on after; it chooses so on this tick (once Real-time combat's let go of it).
+    inline auto spared(int id) -> void
+    {
+        State& s = state();
+        auto it = s.cats.find(id);
+        if (it == s.cats.end()) return;
+        it->second.beaten_until = s.now + 2.0;
+        it->second.until = s.now;
+    }
+
     // What each cat wants now, worked out again (each day, and as the Clans come in).
     inline auto rethink(const World& w) -> void
     {
@@ -619,7 +640,8 @@ namespace clw::life
     }
 
     // For tests and the menu: what each cat in the near camp is doing, and how many are in the world. "all" has every cat
-    // of the camp (id, name, rank, doing as its label says it, in_world, in_den, and where it is when it's in the world);
+    // of the camp (id, name, rank, doing as its label says it, in_world, in_den, beaten, and where it is when it's in the
+    // world);
     // "cats" the first dozen in the world (id, name, where), as the tests read them.
     inline auto snapshot(const World& w) -> wcmods::Json
     {
@@ -642,6 +664,7 @@ namespace clw::life
             one.set("rank", Json(std::string(cl::name(c.rank))));
             one.set("doing", Json(wcmods::utf8(words_for(w, l))));
             one.set("in_den", Json(l.in_den));
+            one.set("beaten", Json(beaten(l)));
             const bool in = l.npc && l.npc->actor();
             one.set("in_world", Json(in));
             if (in)

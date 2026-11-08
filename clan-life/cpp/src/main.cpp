@@ -141,7 +141,7 @@ namespace
         clw::life::rethink(*s.world);
         wcmods::share("days", static_cast<double>(s.world->days));
         wcmods::share("moons", static_cast<double>(s.world->moons));
-        wcmods::share("cats", static_cast<double>(s.world->cats.size()));
+        clw::share_counts(*s.world);
         wcmods::share("made", s.world->made_now);
         wcmods::share("slot", static_cast<double>(slot));
         wcmods::share("yours", std::string(cl::name(yours)));
@@ -163,12 +163,6 @@ namespace
         wcmods::share("genes_matching", static_cast<double>(matching));
         wcmods::share("tortoiseshells", static_cast<double>(torties));
         wcmods::share("born", static_cast<double>(kits));
-        for (clw::Clan c : cl::clans)
-        {
-            int n = 0;
-            for (const clw::Cat& cat_ : s.world->cats) n += cat_.clan == c;
-            wcmods::share(std::format("clan {}", cl::name(c)), static_cast<double>(n));
-        }
     }
 
     // Four times a second: whether it's on, and the slot's Clans brought in as it comes on.
@@ -198,7 +192,7 @@ namespace
         static std::vector<std::pair<std::wstring, std::wstring>> waiting;
         return waiting;
     }
-    auto banner(const wchar_t* title, std::wstring text) -> void { banners().push_back({title, std::move(text)}); }
+    auto banner(std::wstring title, std::wstring text) -> void { banners().push_back({std::move(title), std::move(text)}); }
     auto show_news() -> void
     {
         auto& waiting = banners();
@@ -235,7 +229,7 @@ namespace
         if (w.news.size() > 80) w.news.erase(w.news.begin(), w.news.begin() + static_cast<long>(w.news.size() - 80));
         wcmods::log(L"a moon has passed ({}): {} pieces of news", w.moons, news.size());
         wcmods::share("moons", static_cast<double>(w.moons));
-        wcmods::share("cats", static_cast<double>(w.cats.size()));
+        clw::share_counts(w);
         clw::life::respawn();
     }
 
@@ -257,7 +251,7 @@ namespace
         if (s.state != "on" || !s.world) return;
         const DaySettings d = day_settings();
         if (const auto& a = applied(); !a || a->minutes != d.minutes || a->night_sky != d.night_sky || a->cats != d.cats || a->within != d.within) apply_day(true);
-        for (std::wstring& line : clw::fights::tick(*s.world)) banner(L"A fight", std::move(line));
+        for (auto& [title, line] : clw::fights::tick(*s.world)) banner(std::move(title), std::move(line));
         clw::life::tick(*s.world, 0.5);
         for (std::wstring& line : clw::party::tick(*s.world, clw::you::your_rank())) banner(L"Your party", std::move(line));
         for (std::wstring& line : clw::code::tick(*s.world, clw::you::your_rank())) banner(L"The warrior code", std::move(line));

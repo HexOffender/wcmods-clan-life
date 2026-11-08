@@ -90,7 +90,7 @@ namespace clw::party
     inline auto label(const Cat& c, wcmods::Npc& n) -> void
     {
         n.set_label({.name = wcmods::wide(cl::full_name(game().tables, c)), .title = life::rank_title(c.rank), .extra = L"With you",
-                     .range = 700});
+                     .range = life::state().label_range});
     }
 
     // Ask a clanmate along (`your_rank`: your cat's): its answer, said in the talk box, and with you if it said yes.

@@ -16,6 +16,7 @@
 #include <WCMods/WCMods.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <format>
 #include <optional>
@@ -42,6 +43,9 @@ namespace clw::code
         std::wstring hostile_last = L"-";
         bool driven_out = false;      // the banner for being driven out shown (once a visit)
         std::string pardon_test;
+        std::chrono::steady_clock::time_point speaks_until{};   // the talk box spoken for until then (speak)
+        std::wstring spoken_speaker, spoken_words;              // the line up now, and since when: hidden by tick after ten
+        std::chrono::steady_clock::time_point spoken_at{};      // real seconds (a timer would stall when the clock's set)
     };
     inline auto state() -> State&
     {
@@ -111,6 +115,36 @@ namespace clw::code
         return nullptr;
     }
 
+    // A cat's words to you in the game's talk box, for ten seconds (party.hpp's say, with time for a verdict); several
+    // at once take their turn.
+    inline auto speak(const std::wstring& speaker, const std::wstring& words) -> void
+    {
+        using clock = std::chrono::steady_clock;
+        State& s = state();
+        const auto now = clock::now();
+        const auto at = std::max(now, s.speaks_until);
+        s.speaks_until = at + std::chrono::seconds(11);
+        auto line = [speaker, words] {
+            State& st = state();
+            wcmods::say(speaker, words);
+            st.spoken_speaker = speaker;
+            st.spoken_words = words;
+            st.spoken_at = clock::now();
+        };
+        if (at <= now) line();
+        else wcmods::after(std::chrono::duration<double>(at - now).count(), line);
+    }
+    // Ten real seconds after a line was said, taken down if it's still the one up (not a talk of the game's or another
+    // mod's since).
+    inline auto hide_spoken() -> void
+    {
+        State& s = state();
+        if (s.spoken_words.empty() || std::chrono::steady_clock::now() - s.spoken_at < std::chrono::seconds(10)) return;
+        if (!wcmods::talk_playing() && wcmods::talk_speaker() == s.spoken_speaker && wcmods::talk_line() == s.spoken_words) wcmods::hide_talk();
+        s.spoken_words.clear();
+        s.spoken_speaker.clear();
+    }
+
     // The leader judges a breach it has heard of: the verdict said before the Clan, and carried out. The news to show.
     inline auto judge(World& w, cl::BreachDone& b, Rank your_rank) -> std::vector<std::wstring>
     {
@@ -122,7 +156,8 @@ namespace clw::code
         const cl::Judgement j = cl::judge(your_rank, weight, w.standing.record, leader);
         const std::string victim_name = b.name;
         const std::string leader_name = leader ? cl::full_name(game().tables, *leader) : std::string("The Clan");
-        const std::string text = cl::verdict_words(j.verdict, leader_name, wcmods::utf8(you::your_name()), cl::deed_words(b.what, victim_name));
+        const std::string your_name = wcmods::utf8(you::your_name());
+        const std::string text = cl::verdict_words(j.verdict, leader_name, your_name, cl::deed_words(b.what, victim_name));
         switch (weight)
         {
         case cl::Weight::Lesser: ++w.standing.record.lesser; break;
@@ -135,7 +170,12 @@ namespace clw::code
         if (j.verdict == cl::Verdict::Exile || j.verdict == cl::Verdict::Punish || j.verdict == cl::Verdict::Demote)
             for (int id : std::vector<int>(party::state().ids)) party::send_home(w, id);
         w.news.push_back({std::string(cl::name(w.yours)), text});
-        shown.push_back(wcmods::wide(text));
+        // the banner says what came of it; the leader says its verdict in the game's talk box (a line too long for a banner)
+        shown.push_back(wcmods::wide(cl::verdict_headline(j.verdict, leader_name, your_name)));
+        if (auto [speaker, words] = cl::verdict_said(j.verdict, leader_name, your_name, cl::deed_words(b.what, victim_name)); speaker.empty())
+            shown.push_back(wcmods::wide(words));
+        else
+            speak(wcmods::wide(speaker), wcmods::wide(words));
         wcmods::share("verdict", std::string(cl::name(j.verdict)));
         share_state(w);
         wcmods::log(L"judged: {}", wcmods::wide(cl::name(j.verdict)));
@@ -207,6 +247,7 @@ namespace clw::code
     {
         std::vector<std::wstring> shown;
         State& s = state();
+        hide_spoken();
         if (party::test_hook("ClanLife.test_pardon", s.pardon_test))
         {
             w.standing = {};
@@ -294,6 +335,9 @@ namespace clw::code
         s.part.reset();
         s.hostile_last = L"-";
         s.driven_out = false;
+        s.spoken_words.clear();
+        s.spoken_speaker.clear();
+        s.speaks_until = {};
         wcmods::share("ClanLife.hostile", wcmods::Json::array());
     }
 } // namespace clw::code

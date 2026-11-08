@@ -74,19 +74,29 @@ def _events(agent):
 
 
 def _beat(agent, name):
-    """Strike the cat until it yields: next to it, facing it, healed between blows."""
+    """Strike the cat until it yields: next to it, facing it, locked on to it (a blow lands on the target when it's in
+    reach, else the nearest: in a crowded camp the lock keeps the blows on this cat), healed between blows."""
     yielded = _get(agent, RTC, "yielded") or 0
-    for _ in range(60):
-        c = _cat(agent, name)
-        if c:
-            x, y, z = c["at"]
-            agent.lua(f"return Game.cat():teleport({x - 110}, {y}, {z + 20})")
-            agent.lua(FACE.format(x=x, y=y))
-        _action(agent, "light")
-        time.sleep(0.9)
-        if (_get(agent, RTC, "yielded") or 0) > yielded:
-            return
-    raise AssertionError(f"{name} didn't yield")
+    # (it doesn't fight back meanwhile: a cat pacing round your cat, or backing into a den, takes blows slowly, and the
+    # fight's own moves are test_foes'; the yield comes from the blows alone)
+    agent.lua('WCModsCpp.share("RealtimeCombat.passive", true) return true')
+    try:
+        for _ in range(90):
+            c = _cat(agent, name)
+            if c:
+                x, y, z = c["at"]
+                agent.lua(f"return Game.cat():teleport({x - 110}, {y}, {z + 20})")
+                agent.lua(FACE.format(x=x, y=y))
+                if _get(agent, RTC, "locked"):
+                    _action(agent, "lock")   # let go of whatever it was
+                _action(agent, "lock")       # the one nearest the middle of the view: this cat
+            _action(agent, "light")
+            time.sleep(0.9)
+            if (_get(agent, RTC, "yielded") or 0) > yielded:
+                return
+        raise AssertionError(f"{name} didn't yield")
+    finally:
+        agent.lua('WCModsCpp.share("RealtimeCombat.passive", nil) return true')
 
 
 def setup(agent):
@@ -106,7 +116,10 @@ def test_fights_spare_and_kill(agent):
     agent.lua("Game.time.set(12, 0) return true")
     assert agent.lua(f"return Game.cat():teleport({x}, {y}, {z})"), "couldn't go to ThunderClan's camp"
     _until(lambda: _life(agent).get("near") == "ThunderClan" and len(_life(agent).get("cats", [])) >= 6, 40, "ThunderClan's cats")
-    grown = [c for c in _life(agent)["cats"] if not c["name"].endswith(("kit", "paw", "star"))]
+    # two warriors (the record says the ranks: the snapshot has names): not the leader, the deputy, an elder or a queen
+    with open(RECORD, encoding="utf-8") as f:
+        ranks = {c["id"]: c["rank"] for c in json.load(f)["slots"][str(int(_get(agent, MOD, "slot")))]["cats"]}
+    grown = [c for c in _life(agent)["cats"] if ranks.get(c["id"]) == "warrior"]
     assert len(grown) >= 2, _life(agent)["cats"]
     first, second = grown[0], grown[1]
     fought, spared, killed = (_get(agent, MOD, k) or 0 for k in ("fights_fought", "fights_spared", "fights_killed"))

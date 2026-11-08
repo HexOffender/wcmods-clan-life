@@ -112,6 +112,12 @@ static void judged_by_rank()
     // the worse the breach, the more standing lost
     CHECK(j(Rank::Warrior, Weight::Severe).standing_loss > j(Rank::Warrior, Weight::Serious).standing_loss);
     CHECK(!cl::verdict_words(Verdict::Exile, "Mousestar", "Emberpaw", "killed Hazefire, a Clanmate").empty());
+    // the leader speaks the verdict; a leader's own breach has no speaker; the banner's line is short
+    CHECK(cl::verdict_said(Verdict::Punish, "Mousestar", "Emberpaw", "killed Hazefire, a Clanmate").first == "Mousestar");
+    CHECK(cl::verdict_said(Verdict::Excused, "Mousestar", "Mousestar", "killed Hazefire, a Clanmate").first.empty());
+    CHECK(cl::verdict_words(Verdict::Punish, "Mousestar", "Emberpaw", "killed Hazefire, a Clanmate").starts_with("Mousestar: \""));
+    for (auto v : {Verdict::Exile, Verdict::Demote, Verdict::Punish, Verdict::Rebuke, Verdict::Excused, Verdict::StarClan})
+        CHECK(cl::verdict_headline(v, "Mousestar", "Emberpaw").size() < 80 && !cl::verdict_headline(v, "Mousestar", "Emberpaw").empty());
 }
 
 // Who speaks up to the leader: most do; a deputy's witnesses far fewer; a frightened cat less; the leader always.

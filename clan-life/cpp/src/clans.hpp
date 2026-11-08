@@ -432,9 +432,18 @@ namespace cl
                 taken.insert(whole);
                 return;
             }
-            // every name its rank could have is taken (an apprentice's one -paw): the rank's name all the same, the
-            // same as another cat's somewhere in the forest, rather than a kit's name on an apprentice
-            if (const int si = weighted(sw); si >= 0) c.suffix = si;
+            // every name this prefix could have at its rank is taken (an apprentice's one -paw, when a Goosepaw lives
+            // already): a new prefix that fits its look, as a kit's is found, so no two living cats share a name (the
+            // books); only with no free name at all does it take the rank's suffix on its old prefix, a name twice
+            if (const int si = weighted(sw); si >= 0)
+            {
+                c.suffix = si;
+                if (const auto fits = names_that_fit(c, 1); !fits.empty())
+                {
+                    c.prefix = fits.front();
+                    taken.insert(t.prefixes[static_cast<size_t>(c.prefix)].word + t.suffixes[static_cast<size_t>(si)].word);
+                }
+            }
         }
         // A litter of `n` kits born to these parents (0 moons old, littermates), with genes from both.
         auto litter(const Cat& mother, const Cat* father, int n) -> std::vector<Cat>

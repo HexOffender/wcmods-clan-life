@@ -206,26 +206,45 @@ namespace cl
         return {Verdict::Punish, loss};
     }
 
-    // The leader's words, said before the Clan (`breaker`: its name; `deed`: deed_words).
-    inline auto verdict_words(Verdict v, const std::string& leader, const std::string& breaker, const std::string& deed) -> std::string
+    // The leader's words, said before the Clan (`breaker`: its name; `deed`: deed_words): (who speaks, the words). Nobody
+    // speaks for a leader's own breach: the words then tell what the Clan saw.
+    inline auto verdict_said(Verdict v, const std::string& leader, const std::string& breaker, const std::string& deed)
+        -> std::pair<std::string, std::string>
     {
         switch (v)
         {
         case Verdict::Exile:
-            return leader + ": \"" + breaker + " " + deed + ". The warrior code has no place for such a cat. " + breaker +
-                   ", you are exiled. Leave our territory, and don't come back.\"";
+            return {leader, breaker + " " + deed + ". The warrior code has no place for such a cat. " + breaker +
+                                ", you are exiled. Leave our territory, and don't come back."};
         case Verdict::Demote:
-            return leader + ": \"" + breaker + " " + deed + ". You are my deputy no longer. Until I say otherwise, you'll see "
-                   "to the elders.\"";
+            return {leader, breaker + " " + deed + ". You are my deputy no longer. Until I say otherwise, you'll see to the elders."};
         case Verdict::Punish:
-            return leader + ": \"" + breaker + " " + deed + ". For the next three days you'll clear the elders' ticks and "
-                   "fetch their moss, and you'll go nowhere without leave.\"";
-        case Verdict::Rebuke:
-            return leader + ": \"" + breaker + " " + deed + ". Never again, do you hear me?\"";
+            return {leader, breaker + " " + deed + ". For the next three days you'll clear the elders' ticks and fetch their "
+                                "moss, and you'll go nowhere without leave."};
+        case Verdict::Rebuke: return {leader, breaker + " " + deed + ". Never again, do you hear me?"};
         case Verdict::Excused:
-            return breaker + " " + deed + ". As leader, " + breaker + " answers only to StarClan, but the Clan has seen it.";
-        case Verdict::StarClan:
-            return leader + ": \"" + breaker + " " + deed + ". We need our medicine cat. Let StarClan judge them.\"";
+            return {"", breaker + " " + deed + ". As leader, " + breaker + " answers only to StarClan, but the Clan has seen it."};
+        case Verdict::StarClan: return {leader, breaker + " " + deed + ". We need our medicine cat. Let StarClan judge them."};
+        }
+        return {"", ""};
+    }
+    // The same as one line for the news: `Leader: "..."`.
+    inline auto verdict_words(Verdict v, const std::string& leader, const std::string& breaker, const std::string& deed) -> std::string
+    {
+        auto [speaker, words] = verdict_said(v, leader, breaker, deed);
+        return speaker.empty() ? words : speaker + ": \"" + words + "\"";
+    }
+    // What came of it, in a line short enough for a banner.
+    inline auto verdict_headline(Verdict v, const std::string& leader, const std::string& breaker) -> std::string
+    {
+        switch (v)
+        {
+        case Verdict::Exile: return leader + " has exiled " + breaker + ".";
+        case Verdict::Demote: return leader + " has taken the deputyship from " + breaker + ".";
+        case Verdict::Punish: return leader + " has given " + breaker + " three days of the elders' ticks and moss.";
+        case Verdict::Rebuke: return leader + " has rebuked " + breaker + ".";
+        case Verdict::Excused: return breaker + " answers only to StarClan.";
+        case Verdict::StarClan: return leader + " leaves " + breaker + " to StarClan's judgement.";
         }
         return "";
     }

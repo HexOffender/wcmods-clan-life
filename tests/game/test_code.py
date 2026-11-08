@@ -71,9 +71,14 @@ def _cat(agent, id_):
 
 
 def _next_to(agent, c):
+    """Beside the cat, facing it, locked on to it (a blow lands on the target when it's in reach, else the nearest: in a
+    crowded camp the lock keeps the blows on this cat)."""
     x, y, z = c["at"]
     agent.lua(f"return Game.cat():teleport({x - 110}, {y}, {z + 20})")
     agent.lua(FACE.format(x=x, y=y))
+    if _get(agent, RTC, "locked"):
+        _action(agent, "lock")   # let go of whatever it was
+    _action(agent, "lock")       # the one nearest the middle of the view: this cat
 
 
 def setup(agent):

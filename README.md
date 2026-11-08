@@ -45,7 +45,7 @@ own tests. There's nothing to install yet. So far:
   - An attack counts only when you hit the same cat more than once in a fight: one blow in a crowded fight is taken as
     an accident and forgiven. Your party's blows aren't yours, and your party never goes after a kit or a medicine cat.
   - **At dawn:** the cats who know may tell your leader (a deputy's witnesses are slower to), and the leader judges by
-    your rank:
+    your rank, saying its verdict to you in the game's talk box (a banner says what came of it):
     - a warrior is exiled for a severe or serious breach
     - an apprentice is punished the first time
     - a deputy loses the deputyship

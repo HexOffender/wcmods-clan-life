@@ -44,6 +44,8 @@ namespace clw::code
         bool driven_out = false;      // the banner for being driven out shown (once a visit)
         std::string pardon_test;
         std::chrono::steady_clock::time_point speaks_until{};   // the talk box spoken for until then (speak)
+        std::wstring spoken_speaker, spoken_words;              // the line up now, and since when: hidden by tick after ten
+        std::chrono::steady_clock::time_point spoken_at{};      // real seconds (a timer would stall when the clock's set)
     };
     inline auto state() -> State&
     {
@@ -123,13 +125,24 @@ namespace clw::code
         const auto at = std::max(now, s.speaks_until);
         s.speaks_until = at + std::chrono::seconds(11);
         auto line = [speaker, words] {
+            State& st = state();
             wcmods::say(speaker, words);
-            wcmods::after(10, [speaker, words] {
-                if (!wcmods::talk_playing() && wcmods::talk_speaker() == speaker && wcmods::talk_line() == words) wcmods::hide_talk();
-            });
+            st.spoken_speaker = speaker;
+            st.spoken_words = words;
+            st.spoken_at = clock::now();
         };
         if (at <= now) line();
         else wcmods::after(std::chrono::duration<double>(at - now).count(), line);
+    }
+    // Ten real seconds after a line was said, taken down if it's still the one up (not a talk of the game's or another
+    // mod's since).
+    inline auto hide_spoken() -> void
+    {
+        State& s = state();
+        if (s.spoken_words.empty() || std::chrono::steady_clock::now() - s.spoken_at < std::chrono::seconds(10)) return;
+        if (!wcmods::talk_playing() && wcmods::talk_speaker() == s.spoken_speaker && wcmods::talk_line() == s.spoken_words) wcmods::hide_talk();
+        s.spoken_words.clear();
+        s.spoken_speaker.clear();
     }
 
     // The leader judges a breach it has heard of: the verdict said before the Clan, and carried out. The news to show.
@@ -234,6 +247,7 @@ namespace clw::code
     {
         std::vector<std::wstring> shown;
         State& s = state();
+        hide_spoken();
         if (party::test_hook("ClanLife.test_pardon", s.pardon_test))
         {
             w.standing = {};
@@ -321,6 +335,9 @@ namespace clw::code
         s.part.reset();
         s.hostile_last = L"-";
         s.driven_out = false;
+        s.spoken_words.clear();
+        s.spoken_speaker.clear();
+        s.speaks_until = {};
         wcmods::share("ClanLife.hostile", wcmods::Json::array());
     }
 } // namespace clw::code
